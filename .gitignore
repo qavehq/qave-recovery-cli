@@ -1,0 +1,22 @@
+# binaries
+qave-recovery-cli
+qave-recovery-cli-exp
+dist/
+bin/
+
+# release artifacts
+*.zip
+qave-restore-*.zip
+
+# logs / coverage / temp
+*.log
+*.out
+*.test
+coverage.out
+
+# macOS
+.DS_Store
+
+# editors
+.vscode/
+.idea/
