@@ -57,8 +57,7 @@ Restore all files:
 
 ## User guide
 
-For the full recovery guide and end-user instructions, see the official Qave Manual.
-
+For the full recovery guide and end-user instructions, see [docs/RECOVERY_GUIDE.md](docs/RECOVERY_GUIDE.md).
 ## Maintainers
 
 If you are preparing an official release asset, see [RELEASING.md](RELEASING.md).
