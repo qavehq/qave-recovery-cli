@@ -2,6 +2,7 @@
 
 This note is for maintainers only.
 It is not part of the normal end-user recovery flow.
+It covers release assets for the standalone recovery CLI only, not Recovery Package generation or other producer-side systems.
 
 ## Build release assets
 
@@ -57,4 +58,3 @@ cat qave-recovery-cli-darwin-arm64-<version>.zip.sha256
 Upload the generated `.zip` and `.sha256` files to the GitHub Releases page for this repository.
 
 After the release is published, keep the download instructions in `README.md` aligned with the actual release assets in this repository.
-

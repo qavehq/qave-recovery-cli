@@ -4,14 +4,16 @@
 
 Your Recovery Package is the file that lets you recover your Qave files after you move to a new computer or lose access to your old device. Its file name usually ends with `.qrm`.
 
-It is not a normal download and it is not a plain backup copy of your files. Think of it as the file that tells the official Qave recovery tool how to unlock and rebuild your files.
+It is not a normal download and it is not a plain backup copy of your files. Think of it as the package consumed by the official Qave recovery tool to verify, unlock, decrypt, and rebuild your files.
+
+This guide explains how to use an existing Recovery Package. It does not describe how Recovery Packages are produced.
 
 ## Before you start
 
 Prepare these 3 things before you type any command:
 
 * your Recovery Package file, for example `something.qrm`
-* the same wallet account that was used when this Recovery Package was created
+* the wallet account associated with this Recovery Package
 * the Recovery Key for that same wallet account
 
 ## Step 0. Download the official recovery tool
@@ -133,11 +135,10 @@ You can treat recovery as successful when all 3 of these are true:
 * `file_count=locked` during `verify` is normal; it means you should continue to unlock
 * seeing the `Sign Challenge` page is normal; click the button to continue
 * if the Recovery Key is wrong, the tool lets you type it again in the same `restore-all` session
-* if the wallet in MetaMask is not the same wallet that created the Recovery Package, recovery will not continue
+* if the wallet in MetaMask is not the wallet associated with the Recovery Package, recovery will not continue
 
 ## The 3 things that matter most
 
 * keep the correct `.qrm` file
 * use the correct MetaMask wallet
 * enter the correct Recovery Key
-

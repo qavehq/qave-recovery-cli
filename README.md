@@ -1,10 +1,10 @@
 # qave-recovery-cli
 
-Open-source recovery CLI for Qave recovery packages.
+Open-source standalone recovery CLI for Qave Recovery Packages.
 
 ## What this repository provides
 
-This repository contains the standalone recovery tool for Qave recovery packages.
+This repository contains the standalone recovery CLI for an existing Qave Recovery Package.
 
 It is intended to let users independently:
 
@@ -16,15 +16,18 @@ It is intended to let users independently:
 
 ## Scope
 
-This repository focuses on recovery and verification only.
+This repository covers the recovery and verification flow for an existing package only.
 
 It does **not** include:
 
-* payment logic
-* subscription logic
-* backend orchestration
-* internal dashboards
-* provider-side operational infrastructure
+* package generation
+* exporter / packer logic
+* backend assembly logic
+* recovery policy generation
+* upload-side integration
+* producer-side implementation
+
+For the repository boundary in one place, see [docs/SCOPE.md](docs/SCOPE.md).
 
 ## Install
 
@@ -61,4 +64,3 @@ For the full recovery guide and end-user instructions, see [docs/RECOVERY_GUIDE.
 ## Maintainers
 
 If you are preparing an official release asset, see [RELEASING.md](RELEASING.md).
-
