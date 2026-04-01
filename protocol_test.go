@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"strings"
 	"testing"
 )
@@ -136,54 +135,24 @@ func TestDeriveSessionExportSeedDeterministic(t *testing.T) {
 	}
 }
 
-func TestEncryptDecryptPayloadRoundTrip(t *testing.T) {
-	doc := recoveryMapDocument{
-		Header: recoveryMapHeader{
-			MapID:          "11111111-2222-3333-4444-555555555555",
-			VaultOwner:     "0x123400000000000000000000000000000000abcd",
-			VaultStateHash: "deadbeef",
-			GeneratedAt:    "2026-03-21T00:00:00Z",
-			PayloadEncryption: recoveryPayloadEncryption{
-				Algorithm:         "AES-256-GCM",
-				KDF:               "HKDF-SHA256",
-				Nonce:             base64.StdEncoding.EncodeToString([]byte("0123456789ab")),
-				PayloadProtection: payloadProtectionWalletBoundEncrypted,
-				Encoding:          "base64",
-			},
-		},
-	}
-	payload := recoveryMapPayload{
-		FWSSNetwork:    "phase2-reserved",
-		FWSSAPIVersion: "v1",
-		FileIndex: []recoveryMapFileIndex{
-			{
-				Name:   "alpha.txt",
-				Size:   12,
-				CID:    "piece-alpha",
-				Status: "stored",
-				StorageRefs: []recoveryMapStorageRef{
-					{Kind: "provider_operation_ref", Value: "op-2"},
-					{Kind: "bucket", Value: "default"},
-				},
-				UploadedAt: "2026-03-21T00:00:00Z",
-				ExpiresAt:  "2099-01-01T00:00:00Z",
-			},
-		},
-	}
-	key := []byte("0123456789abcdef0123456789abcdef")
-
-	ciphertext, tag, err := encryptPayload(doc, payload, key)
+func TestDecryptPayloadFixture(t *testing.T) {
+	doc := loadFixtureDoc(t, "verify-unlock-legacy.qrm")
+	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
+	challenge, err := buildChallengeFromDocument(doc)
 	if err != nil {
-		t.Fatalf("encrypt payload: %v", err)
+		t.Fatalf("build challenge: %v", err)
 	}
-	doc.PayloadCiphertext = ciphertext
-	doc.PayloadTag = tag
+	signature := mustPersonalSign(t, privateKey, challenge)
+	key, err := deriveUnlockKey(doc, challenge, signature)
+	if err != nil {
+		t.Fatalf("derive key: %v", err)
+	}
 
 	got, err := decryptPayload(doc, key)
 	if err != nil {
 		t.Fatalf("decrypt payload: %v", err)
 	}
-	if got.FWSSNetwork != payload.FWSSNetwork || got.FWSSAPIVersion != payload.FWSSAPIVersion || len(got.FileIndex) != 1 {
+	if got.FWSSNetwork != "phase2-reserved" || got.FWSSAPIVersion != "v1" || len(got.FileIndex) != 2 {
 		t.Fatalf("unexpected decrypted payload: %#v", got)
 	}
 	if got.FileIndex[0].StorageRefs[0].Kind != "bucket" {

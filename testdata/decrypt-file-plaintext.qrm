@@ -1,0 +1,98 @@
+{
+  "header": {
+    "schema": "qave.recovery-map.v1",
+    "map_id": "phase3c-plaintext-map",
+    "generated_at": "2026-03-24T12:00:00Z",
+    "vault_owner": "0x123400000000000000000000000000000000abcd",
+    "vault_state_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "subscription_expires_at": "2099-01-01T00:00:00Z",
+    "payload_encryption": {
+      "algorithm": "AES-256-GCM",
+      "kdf": "HKDF-SHA256",
+      "nonce": "bm9uY2U=",
+      "binding": "wallet_bound_personal_sign_v1"
+    }
+  },
+  "payload": {
+    "snapshot": {
+      "schema_version": "qave.recovery-package.v1",
+      "package_id": "phase3c-package",
+      "map_id": "phase3c-package",
+      "vault_owner": "0x123400000000000000000000000000000000abcd",
+      "vault_state_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "generated_at": "2026-03-24T12:00:00Z",
+      "subscription_expires_at": "2099-01-01T00:00:00Z",
+      "file_count": 1,
+      "package_protection_mode": "wallet_bound_encrypted",
+      "recovery_flow_version": "recover-all.v1",
+      "recovery_kdf_profiles": [
+        {
+          "material_version": 7,
+          "kdf_algorithm": "PBKDF2-HMAC-SHA-256",
+          "kdf_salt": "eHh4eHh4eHh4eHh4eHh4eA==",
+          "kdf_params": {
+            "iterations": 600000,
+            "hash": "SHA-256",
+            "derived_key_length": 32
+          },
+          "kdf_version": 1
+        }
+      ]
+    },
+    "file_index": [
+      {
+        "file_id": "00000000-0000-4000-8000-000000000123",
+        "file_name": "report.txt",
+        "logical_path": "docs/report.txt",
+        "name": "docs/report.txt",
+        "size": 22,
+        "cid": "",
+        "storage_refs": [
+          {
+            "kind": "bucket",
+            "value": "docs"
+          }
+        ],
+        "uploaded_at": "2026-03-24T12:00:00Z",
+        "expires_at": "2099-01-01T00:00:00Z",
+        "status": "stored",
+        "encryption": {
+          "mode": "phase1-transport-schema-only",
+          "key_material_included": false,
+          "key_derivation": "phase2-wallet-bound-hkdf-reserved",
+          "wallet_binding": "not_included_in_phase1"
+        },
+        "content_encryption": {
+          "encryption_version": 1,
+          "content_encryption_algorithm": "AES-256-GCM",
+          "content_encryption_iv": "NDQ0NDQ0NDQ0NDQ0"
+        },
+        "recovery_material_version": 7
+      }
+    ],
+    "wrapped_keys": [
+      {
+        "recovery_material_version": 7,
+        "file_id": "00000000-0000-4000-8000-000000000123",
+        "wrapped_file_key": "UzPYQ0o67JDZq0+OLvrj8e5JmYKF4e8icVLzVkZtpqgcdHt/h9ok28ShTufam+/y",
+        "key_wrap_algorithm": "AES-256-GCM",
+        "key_wrap_version": 1,
+        "nonce": null,
+        "iv": "VlZWVlZWVlZWVlZW",
+        "aad": null,
+        "tag": null,
+        "key_material_version": 1
+      }
+    ],
+    "recovery_policy": {
+      "requires_wallet_auth": true,
+      "requires_recovery_key": true,
+      "trusted_device_supported": false,
+      "recover_all_mode": "batch_only",
+      "local_decrypt_required": true,
+      "local_package_required": true
+    },
+    "fwss_network": "phase2-reserved",
+    "fwss_api_version": "v1"
+  }
+}

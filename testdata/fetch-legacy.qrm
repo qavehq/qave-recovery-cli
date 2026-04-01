@@ -1,0 +1,42 @@
+{
+  "header": {
+    "schema": "qave.recovery-map.v1",
+    "map_id": "fetch-legacy-map",
+    "generated_at": "2026-03-21T03:00:00Z",
+    "vault_owner": "0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a",
+    "vault_state_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+    "subscription_expires_at": "2099-01-01T00:00:00Z",
+    "payload_encryption": {
+      "algorithm": "AES-256-GCM",
+      "kdf": "HKDF-SHA256",
+      "nonce": "bm9uY2U=",
+      "binding": "wallet_bound_personal_sign_v1"
+    }
+  },
+  "payload": {
+    "file_index": [
+      {
+        "name": "docs/alpha.bin",
+        "size": 27,
+        "cid": "piece-fetch-alpha",
+        "storage_refs": [
+          {
+            "kind": "provider_operation_ref",
+            "value": "file:///tmp/qave-recovery-cli-fixtures/fetch-legacy.enc"
+          }
+        ],
+        "uploaded_at": "",
+        "expires_at": "",
+        "status": "stored",
+        "encryption": {
+          "mode": "",
+          "key_material_included": false,
+          "key_derivation": "",
+          "wallet_binding": ""
+        }
+      }
+    ],
+    "fwss_network": "phase5a-test",
+    "fwss_api_version": "v1"
+  }
+}

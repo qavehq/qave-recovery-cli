@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net"
+	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -58,45 +57,16 @@ func TestSelectRecoveryFileByNameCIDIndex(t *testing.T) {
 func TestRunFetchLegacyPlaintextFromFileURL(t *testing.T) {
 	now := time.Date(2026, 3, 21, 3, 0, 0, 0, time.UTC)
 	tempDir := t.TempDir()
-	sourcePath := filepath.Join(tempDir, "source-alpha.enc")
 	sourceBytes := []byte("legacy encrypted blob bytes")
-	if err := os.WriteFile(sourcePath, sourceBytes, 0o600); err != nil {
+	if err := os.MkdirAll(filepath.Dir(fixtureFetchLegacySourcePath), 0o755); err != nil {
+		t.Fatalf("mkdir source dir: %v", err)
+	}
+	if err := os.WriteFile(fixtureFetchLegacySourcePath, sourceBytes, 0o600); err != nil {
 		t.Fatalf("write source: %v", err)
 	}
 
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-	doc := recoveryMapDocument{
-		Header: recoveryMapHeader{
-			Schema:                recoveryMapSchema,
-			MapID:                 "fetch-legacy-map",
-			GeneratedAt:           now.Format(time.RFC3339Nano),
-			VaultOwner:            vaultOwner,
-			VaultStateHash:        strings.Repeat("1", 64),
-			SubscriptionExpiresAt: "2099-01-01T00:00:00Z",
-			PayloadEncryption: recoveryPayloadEncryption{
-				Algorithm: "AES-256-GCM",
-				KDF:       "HKDF-SHA256",
-				Nonce:     "bm9uY2U=",
-				Binding:   "wallet_bound_personal_sign_v1",
-			},
-		},
-		Payload: &recoveryMapPayload{
-			FWSSNetwork:    "phase5a-test",
-			FWSSAPIVersion: "v1",
-			FileIndex: []recoveryMapFileIndex{
-				{
-					Name:   "docs/alpha.bin",
-					Size:   int64(len(sourceBytes)),
-					CID:    "piece-fetch-alpha",
-					Status: "stored",
-					StorageRefs: []recoveryMapStorageRef{
-						{Kind: "provider_operation_ref", Value: (&url.URL{Scheme: "file", Path: sourcePath}).String()},
-					},
-				},
-			},
-		},
-	}
+	doc := loadFixtureDoc(t, "fetch-legacy.qrm")
 
 	challenge, err := buildUnlockChallenge(doc)
 	if err != nil {
@@ -104,14 +74,7 @@ func TestRunFetchLegacyPlaintextFromFileURL(t *testing.T) {
 	}
 	signature := mustPersonalSign(t, privateKey, challenge)
 
-	qrmPath := filepath.Join(tempDir, "sample-fetch-legacy.qrm")
-	raw, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal qrm: %v", err)
-	}
-	if err := os.WriteFile(qrmPath, append(raw, '\n'), 0o600); err != nil {
-		t.Fatalf("write qrm: %v", err)
-	}
+	qrmPath := copyFixtureQRM(t, tempDir, "fetch-legacy.qrm", "sample-fetch-legacy.qrm")
 
 	outputDir := filepath.Join(tempDir, "out")
 	var stdout bytes.Buffer
@@ -137,82 +100,21 @@ func TestRunFetchSessionBoundEncryptedFromFileURL(t *testing.T) {
 	now := time.Date(2026, 3, 21, 4, 0, 0, 0, time.UTC)
 	tempDir := t.TempDir()
 	sourceBytes := []byte("session-bound encrypted blob bytes")
-	sourcePath := filepath.Join(tempDir, "source-session.enc")
-	if err := os.WriteFile(sourcePath, sourceBytes, 0o600); err != nil {
+	if err := os.MkdirAll(filepath.Dir(fixtureFetchSessionSourcePath), 0o755); err != nil {
+		t.Fatalf("mkdir source dir: %v", err)
+	}
+	if err := os.WriteFile(fixtureFetchSessionSourcePath, sourceBytes, 0o600); err != nil {
 		t.Fatalf("write source: %v", err)
 	}
 
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-	signingChallenge := strings.Join([]string{
-		sessionChallengeVersionLine,
-		"wallet=" + vaultOwner,
-		"issued_at=" + now.Format(time.RFC3339Nano),
-		"nonce=session-fetch-seed",
-		"purpose=" + sessionChallengePurpose,
-	}, "\n")
-
-	doc := recoveryMapDocument{
-		Header: recoveryMapHeader{
-			Schema:                recoveryMapSchema,
-			MapID:                 "fetch-session-map",
-			GeneratedAt:           now.Format(time.RFC3339Nano),
-			VaultOwner:            vaultOwner,
-			VaultStateHash:        strings.Repeat("2", 64),
-			SubscriptionExpiresAt: "2099-01-01T00:00:00Z",
-			PayloadEncryption: recoveryPayloadEncryption{
-				Algorithm:           "AES-256-GCM",
-				KDF:                 "HKDF-SHA256",
-				Nonce:               "c2Vzc2l2MDAwMDAx",
-				Binding:             "wallet_bound_personal_sign_v1",
-				PayloadProtection:   payloadProtectionWalletBoundEncrypted,
-				Encoding:            "base64",
-				SigningScope:        signingScopeSessionBoundV1,
-				SigningScopeVersion: "v1",
-				SigningChallenge:    signingChallenge,
-			},
-		},
-	}
-	payload := buildRecoveryPackageV1Payload(doc.Header, []recoveryMapFileIndex{
-		{
-			Name:   "blob/session-alpha",
-			Size:   int64(len(sourceBytes)),
-			CID:    "piece-fetch-session",
-			Status: "stored",
-			StorageRefs: []recoveryMapStorageRef{
-				{Kind: "provider_operation_ref", Value: (&url.URL{Scheme: "file", Path: sourcePath}).String()},
-			},
-		},
-	})
-
-	signature := mustPersonalSign(t, privateKey, signingChallenge)
-	sessionSeed, err := deriveSessionExportSeed(signingChallenge, signature, vaultOwner)
-	if err != nil {
-		t.Fatalf("derive session seed: %v", err)
-	}
-	key, err := derivePayloadKeyFromSessionSeed(doc, sessionSeed)
-	if err != nil {
-		t.Fatalf("derive payload key: %v", err)
-	}
-	ciphertext, tag, err := encryptPayload(doc, payload, key)
-	if err != nil {
-		t.Fatalf("encrypt payload: %v", err)
-	}
-	doc.PayloadCiphertext = ciphertext
-	doc.PayloadTag = tag
-
-	qrmPath := filepath.Join(tempDir, "sample-fetch-session.qrm")
-	raw, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal qrm: %v", err)
-	}
-	if err := os.WriteFile(qrmPath, append(raw, '\n'), 0o600); err != nil {
-		t.Fatalf("write qrm: %v", err)
-	}
+	doc := loadFixtureDoc(t, "fetch-session.qrm")
+	signature := mustPersonalSign(t, privateKey, doc.Header.PayloadEncryption.SigningChallenge)
+	qrmPath := copyFixtureQRM(t, tempDir, "fetch-session.qrm", "sample-fetch-session.qrm")
 
 	outputDir := filepath.Join(tempDir, "out")
 	var stdout bytes.Buffer
-	err = run([]string{"fetch", qrmPath, "--signer", "manual", "--file", "1", "--output-dir", outputDir}, &stdout, ioDiscard{}, strings.NewReader(signature+"\n"), now)
+	err := run([]string{"fetch", qrmPath, "--signer", "manual", "--file", "1", "--output-dir", outputDir}, &stdout, ioDiscard{}, strings.NewReader(signature+"\n"), now)
 	if err != nil {
 		t.Fatalf("fetch: %v", err)
 	}
@@ -257,72 +159,21 @@ func TestRunFetchLegacyPerExportEncryptedFromFileURL(t *testing.T) {
 	now := time.Date(2026, 3, 21, 4, 30, 0, 0, time.UTC)
 	tempDir := t.TempDir()
 	sourceBytes := []byte("legacy per-export encrypted blob bytes")
-	sourcePath := filepath.Join(tempDir, "source-per-export.enc")
-	if err := os.WriteFile(sourcePath, sourceBytes, 0o600); err != nil {
+	if err := os.MkdirAll(filepath.Dir(fixtureFetchPerExportSource), 0o755); err != nil {
+		t.Fatalf("mkdir source dir: %v", err)
+	}
+	if err := os.WriteFile(fixtureFetchPerExportSource, sourceBytes, 0o600); err != nil {
 		t.Fatalf("write source: %v", err)
 	}
 
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-	doc := recoveryMapDocument{
-		Header: recoveryMapHeader{
-			Schema:                recoveryMapSchema,
-			MapID:                 "fetch-per-export-map",
-			GeneratedAt:           now.Format(time.RFC3339Nano),
-			VaultOwner:            vaultOwner,
-			VaultStateHash:        strings.Repeat("5", 64),
-			SubscriptionExpiresAt: "2099-01-01T00:00:00Z",
-			PayloadEncryption: recoveryPayloadEncryption{
-				Algorithm:         "AES-256-GCM",
-				KDF:               "HKDF-SHA256",
-				Nonce:             "cGVyZXhwb3J0MDAx",
-				Binding:           "wallet_bound_personal_sign_v1",
-				PayloadProtection: payloadProtectionWalletBoundEncrypted,
-				Encoding:          "base64",
-				SigningScope:      signingScopeLegacyPerExport,
-			},
-		},
-	}
-	payload := recoveryMapPayload{
-		FWSSNetwork:    "phase5a-per-export-test",
-		FWSSAPIVersion: "v1",
-		FileIndex: []recoveryMapFileIndex{
-			{
-				Name:   "blob/per-export-alpha",
-				Size:   int64(len(sourceBytes)),
-				CID:    "piece-fetch-per-export",
-				Status: "stored",
-				StorageRefs: []recoveryMapStorageRef{
-					{Kind: "provider_operation_ref", Value: (&url.URL{Scheme: "file", Path: sourcePath}).String()},
-				},
-			},
-		},
-	}
-
+	doc := loadFixtureDoc(t, "fetch-per-export.qrm")
 	challenge, err := buildUnlockChallenge(doc)
 	if err != nil {
 		t.Fatalf("build challenge: %v", err)
 	}
 	signature := mustPersonalSign(t, privateKey, challenge)
-	key, err := deriveUnlockKey(doc, challenge, signature)
-	if err != nil {
-		t.Fatalf("derive key: %v", err)
-	}
-	ciphertext, tag, err := encryptPayload(doc, payload, key)
-	if err != nil {
-		t.Fatalf("encrypt payload: %v", err)
-	}
-	doc.PayloadCiphertext = ciphertext
-	doc.PayloadTag = tag
-
-	qrmPath := filepath.Join(tempDir, "sample-fetch-per-export.qrm")
-	raw, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal qrm: %v", err)
-	}
-	if err := os.WriteFile(qrmPath, append(raw, '\n'), 0o600); err != nil {
-		t.Fatalf("write qrm: %v", err)
-	}
+	qrmPath := copyFixtureQRM(t, tempDir, "fetch-per-export.qrm", "sample-fetch-per-export.qrm")
 
 	outputDir := filepath.Join(tempDir, "out")
 	var stdout bytes.Buffer
@@ -542,81 +393,34 @@ func TestRunFetchProviderPieceURLStorageRef(t *testing.T) {
 	now := time.Date(2026, 3, 21, 4, 0, 0, 0, time.UTC)
 	tempDir := t.TempDir()
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-
 	sourceBytes := []byte("provider-piece-url blob content")
-	mux := http.NewServeMux()
-	mux.HandleFunc("/piece/bafytestpieceurl", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/octet-stream")
-		w.WriteHeader(http.StatusOK)
-		w.Write(sourceBytes)
-	})
-	server := &http.Server{Handler: mux}
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen: %v", err)
-	}
-	go server.Serve(listener)
-	defer server.Close()
-
-	gatewayBase := "http://" + listener.Addr().String()
-
-	doc := recoveryMapDocument{
-		Header: recoveryMapHeader{
-			Schema:                recoveryMapSchema,
-			MapID:                 "fetch-piece-url-map",
-			GeneratedAt:           now.Format(time.RFC3339Nano),
-			VaultOwner:            vaultOwner,
-			VaultStateHash:        strings.Repeat("3", 64),
-			SubscriptionExpiresAt: "2099-01-01T00:00:00Z",
-			PayloadEncryption: recoveryPayloadEncryption{
-				Algorithm:         "AES-256-GCM",
-				KDF:               "HKDF-SHA256",
-				Nonce:             "MDEyMzQ1Njc4OWFi",
-				Binding:           "wallet_bound_personal_sign_v1",
-				PayloadProtection: payloadProtectionWalletBoundEncrypted,
-				Encoding:          "base64",
-				SigningScope:      signingScopeLegacyPerExport,
-			},
-		},
-	}
-	payload := buildRecoveryPackageV1Payload(doc.Header, []recoveryMapFileIndex{
-		{
-			Name:   "blob/piece-url-alpha",
-			Size:   int64(len(sourceBytes)),
-			CID:    "bafytestpieceurl",
-			Status: "stored",
-			StorageRefs: []recoveryMapStorageRef{
-				{Kind: "provider_operation_ref", Value: "op_alpha"},
-				{Kind: "provider_piece_url", Value: gatewayBase + "/piece/bafytestpieceurl"},
-			},
-		},
-	})
+	doc := loadFixtureDoc(t, "fetch-piece-url.qrm")
 
 	challenge, err := buildUnlockChallenge(doc)
 	if err != nil {
 		t.Fatalf("build challenge: %v", err)
 	}
 	signature := mustPersonalSign(t, privateKey, challenge)
-	key, err := deriveUnlockKey(doc, challenge, signature)
-	if err != nil {
-		t.Fatalf("derive unlock key: %v", err)
-	}
-	ciphertext, tag, err := encryptPayload(doc, payload, key)
-	if err != nil {
-		t.Fatalf("encrypt payload: %v", err)
-	}
-	doc.PayloadCiphertext = ciphertext
-	doc.PayloadTag = tag
+	qrmPath := copyFixtureQRM(t, tempDir, "fetch-piece-url.qrm", "fetch-piece-url.qrm")
 
-	qrmPath := filepath.Join(tempDir, "fetch-piece-url.qrm")
-	raw, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal qrm: %v", err)
+	originalFetchClient := fetchHTTPClient
+	fetchHTTPClient = &http.Client{
+		Timeout: defaultFetchHTTPTimeout,
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if req.URL.String() != "http://fixture.invalid/piece/bafytestpieceurl" {
+				t.Fatalf("unexpected provider_piece_url request %q", req.URL.String())
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(sourceBytes)),
+				Header:     make(http.Header),
+				Request:    req,
+			}, nil
+		}),
 	}
-	if err := os.WriteFile(qrmPath, append(raw, '\n'), 0o600); err != nil {
-		t.Fatalf("write qrm: %v", err)
-	}
+	defer func() {
+		fetchHTTPClient = originalFetchClient
+	}()
 
 	outputDir := filepath.Join(tempDir, "out")
 	var stdout bytes.Buffer
@@ -702,7 +506,6 @@ func TestRunFetchSequentialMultiFileRestoreAll(t *testing.T) {
 	now := time.Date(2026, 3, 21, 4, 0, 0, 0, time.UTC)
 	tempDir := t.TempDir()
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
 
 	files := []struct {
 		name    string
@@ -713,86 +516,37 @@ func TestRunFetchSequentialMultiFileRestoreAll(t *testing.T) {
 		{"images/photo.png", bytes.Repeat([]byte("image-bytes-"), 100)},
 		{"archives/backup.zip", bytes.Repeat([]byte("zip-data-chunk-"), 1000)},
 	}
-
-	mux := http.NewServeMux()
-	for _, f := range files {
-		content := f.content
-		name := f.name
-		mux.HandleFunc("/piece/"+url.PathEscape(name), func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/octet-stream")
-			w.WriteHeader(http.StatusOK)
-			w.Write(content)
-		})
-	}
-
-	server := &http.Server{Handler: mux}
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen: %v", err)
-	}
-	go server.Serve(listener)
-	defer server.Close()
-
-	gatewayBase := "http://" + listener.Addr().String()
-
-	doc := recoveryMapDocument{
-		Header: recoveryMapHeader{
-			Schema:                recoveryMapSchema,
-			MapID:                 "sequential-fetch-test",
-			GeneratedAt:           now.Format(time.RFC3339Nano),
-			VaultOwner:            vaultOwner,
-			VaultStateHash:        strings.Repeat("4", 64),
-			SubscriptionExpiresAt: "2099-01-01T00:00:00Z",
-			PayloadEncryption: recoveryPayloadEncryption{
-				Algorithm:         "AES-256-GCM",
-				KDF:               "HKDF-SHA256",
-				Nonce:             "MDEyMzQ1Njc4OWFi",
-				Binding:           "wallet_bound_personal_sign_v1",
-				PayloadProtection: payloadProtectionWalletBoundEncrypted,
-				Encoding:          "base64",
-				SigningScope:      signingScopeLegacyPerExport,
-			},
-		},
-	}
-
-	payloadFiles := make([]recoveryMapFileIndex, len(files))
-	for i, f := range files {
-		payloadFiles[i] = recoveryMapFileIndex{
-			Name:   f.name,
-			Size:   int64(len(f.content)),
-			CID:    f.name,
-			Status: "stored",
-			StorageRefs: []recoveryMapStorageRef{
-				{Kind: "provider_piece_url", Value: gatewayBase + "/piece/" + url.PathEscape(f.name)},
-			},
-		}
-	}
-	payload := buildRecoveryPackageV1Payload(doc.Header, payloadFiles)
-
+	doc := loadFixtureDoc(t, "fetch-sequential.qrm")
 	challenge, err := buildUnlockChallenge(doc)
 	if err != nil {
 		t.Fatalf("build challenge: %v", err)
 	}
 	signature := mustPersonalSign(t, privateKey, challenge)
-	key, err := deriveUnlockKey(doc, challenge, signature)
-	if err != nil {
-		t.Fatalf("derive unlock key: %v", err)
-	}
-	ciphertext, tag, err := encryptPayload(doc, payload, key)
-	if err != nil {
-		t.Fatalf("encrypt payload: %v", err)
-	}
-	doc.PayloadCiphertext = ciphertext
-	doc.PayloadTag = tag
+	qrmPath := copyFixtureQRM(t, tempDir, "fetch-sequential.qrm", "sequential-fetch.qrm")
 
-	qrmPath := filepath.Join(tempDir, "sequential-fetch.qrm")
-	raw, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal qrm: %v", err)
+	contentByPath := make(map[string][]byte, len(files))
+	for _, f := range files {
+		contentByPath["/piece/"+f.name] = f.content
 	}
-	if err := os.WriteFile(qrmPath, append(raw, '\n'), 0o600); err != nil {
-		t.Fatalf("write qrm: %v", err)
+	originalFetchClient := fetchHTTPClient
+	fetchHTTPClient = &http.Client{
+		Timeout: defaultFetchHTTPTimeout,
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			content, ok := contentByPath[req.URL.EscapedPath()]
+			if !ok {
+				t.Fatalf("unexpected sequential fetch path %q", req.URL.EscapedPath())
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(content)),
+				Header:     make(http.Header),
+				Request:    req,
+			}, nil
+		}),
 	}
+	defer func() {
+		fetchHTTPClient = originalFetchClient
+	}()
 
 	for i, f := range files {
 		outputDir := filepath.Join(tempDir, fmt.Sprintf("out-%d", i))

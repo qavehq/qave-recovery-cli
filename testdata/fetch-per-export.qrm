@@ -1,0 +1,21 @@
+{
+  "header": {
+    "schema": "qave.recovery-map.v1",
+    "map_id": "fetch-per-export-map",
+    "generated_at": "2026-03-21T04:30:00Z",
+    "vault_owner": "0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a",
+    "vault_state_hash": "5555555555555555555555555555555555555555555555555555555555555555",
+    "subscription_expires_at": "2099-01-01T00:00:00Z",
+    "payload_encryption": {
+      "algorithm": "AES-256-GCM",
+      "kdf": "HKDF-SHA256",
+      "nonce": "cGVyZXhwb3J0MDAx",
+      "binding": "wallet_bound_personal_sign_v1",
+      "payload_protection": "wallet_bound_encrypted",
+      "encoding": "base64",
+      "signing_scope": "legacy_per_export"
+    }
+  },
+  "payload_ciphertext": "29QMoEdfja5jnicskO/MQVTZZQzAU7IE8X5U7bxExOyor+OlY8sRSj9Hwew6eTcGN7WLYt/9xsnTtvHQ4cfzof26yuzfUqh/UlR3mkH5KjvoJ2WSBZxZ5wSY0ol48t2RuS33GTik8Ngx7UWtor7GQ+I4RTq+vm9Pr/HChFIU41dkmaAcKTF5x9xR781Z3xLC6mP2fmhzfADlJD2oIcCMO3BWLxAuEdmIFwLqLc8i7ob0P5GFlxBMVES4QThTzClYXpNnoUW1IhF2yCed12t2xs+iF09GKFbDZ90je6RdqQ1g5Zm85gLPv1NrjBaBQjgYX/GieXu3tijbjpLKQwKKZ76WEFQcQhfK7YdrSkPmyy9aRpPaz/8q0prJezMaGOwaBYbXiXjVHXRPcQVyPtDbZXDWnhKi4Y+YoDMVEnuamkoONXUiQlQ8pkInpuK0YUnscYVXW4AGKxs5+gmAOXvbjNgRSwW2Mg4tUA4pQIUQmcYVUsfW5TIC4r2TiLoRY/sqdo8hWiznn6pKMBcG7sbO4mf+H+YeFRfoWM4PkotC5fTVjNxBdgI=",
+  "payload_tag": "9wpzT5IbCXQ+AWj2urvY5w=="
+}

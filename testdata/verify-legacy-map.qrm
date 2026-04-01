@@ -1,0 +1,40 @@
+{
+  "header": {
+    "schema": "qave.recovery-map.v1",
+    "map_id": "legacy-verify-map",
+    "generated_at": "2026-03-24T00:00:00Z",
+    "vault_owner": "0x123400000000000000000000000000000000abcd",
+    "vault_state_hash": "8888888888888888888888888888888888888888888888888888888888888888",
+    "subscription_expires_at": "2099-01-01T00:00:00Z",
+    "payload_encryption": {
+      "algorithm": "AES-256-GCM",
+      "kdf": "HKDF-SHA256",
+      "nonce": "bm9uY2U=",
+      "binding": "wallet_bound_personal_sign_v1",
+      "payload_protection": "legacy_plaintext",
+      "encoding": "base64",
+      "signing_scope": "legacy_per_export"
+    }
+  },
+  "payload": {
+    "file_index": [
+      {
+        "name": "legacy-alpha.txt",
+        "size": 11,
+        "cid": "legacy-cid",
+        "storage_refs": null,
+        "uploaded_at": "2026-03-24T00:00:00Z",
+        "expires_at": "2099-01-01T00:00:00Z",
+        "status": "stored",
+        "encryption": {
+          "mode": "",
+          "key_material_included": false,
+          "key_derivation": "",
+          "wallet_binding": ""
+        }
+      }
+    ],
+    "fwss_network": "phase1-legacy",
+    "fwss_api_version": "v1"
+  }
+}

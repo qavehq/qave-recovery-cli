@@ -1,0 +1,139 @@
+{
+  "header": {
+    "schema": "qave.recovery-map.v1",
+    "map_id": "pkg-verify-map",
+    "generated_at": "2026-03-24T00:00:00Z",
+    "vault_owner": "0x123400000000000000000000000000000000abcd",
+    "vault_state_hash": "7777777777777777777777777777777777777777777777777777777777777777",
+    "subscription_expires_at": "2099-01-01T00:00:00Z",
+    "payload_encryption": {
+      "algorithm": "AES-256-GCM",
+      "kdf": "HKDF-SHA256",
+      "nonce": "bm9uY2U=",
+      "binding": "wallet_bound_personal_sign_v1"
+    }
+  },
+  "payload": {
+    "snapshot": {
+      "schema_version": "qave.recovery-package.v1",
+      "package_id": "pkg-verify-map",
+      "map_id": "pkg-verify-map",
+      "vault_owner": "0x123400000000000000000000000000000000abcd",
+      "vault_state_hash": "7777777777777777777777777777777777777777777777777777777777777777",
+      "generated_at": "2026-03-24T00:00:00Z",
+      "subscription_expires_at": "2099-01-01T00:00:00Z",
+      "file_count": 2,
+      "package_protection_mode": "",
+      "recovery_flow_version": "recover-all.v1"
+    },
+    "file_index": [
+      {
+        "file_id": "00000000-0000-4000-8000-000000000001",
+        "file_name": "alpha.txt",
+        "logical_path": "alpha.txt",
+        "name": "alpha.txt",
+        "size": 123,
+        "cid": "cid-alpha",
+        "storage_refs": [
+          {
+            "kind": "provider_operation_ref",
+            "value": "op-alpha"
+          }
+        ],
+        "uploaded_at": "2026-03-24T00:00:00Z",
+        "expires_at": "2099-01-01T00:00:00Z",
+        "status": "stored",
+        "encryption": {
+          "mode": "",
+          "key_material_included": false,
+          "key_derivation": "",
+          "wallet_binding": ""
+        }
+      },
+      {
+        "file_id": "00000000-0000-4000-8000-000000000002",
+        "file_name": "beta.txt",
+        "logical_path": "docs/beta.txt",
+        "name": "docs/beta.txt",
+        "size": 456,
+        "cid": "",
+        "storage_refs": [
+          {
+            "kind": "provider_operation_ref",
+            "value": "op-beta"
+          },
+          {
+            "kind": "provider_dataset_id",
+            "value": "dataset-beta"
+          }
+        ],
+        "uploaded_at": "2026-03-24T00:10:00Z",
+        "snapshot_index": 1,
+        "expires_at": "2099-01-01T00:00:00Z",
+        "status": "replicating",
+        "encryption": {
+          "mode": "",
+          "key_material_included": false,
+          "key_derivation": "",
+          "wallet_binding": ""
+        }
+      }
+    ],
+    "fetch_sources": [
+      {
+        "file_id": "00000000-0000-4000-8000-000000000001",
+        "source_type": "provider_operation_ref",
+        "source_ref": "op-alpha",
+        "backend_ref": null,
+        "piece_ref": "cid-alpha",
+        "cid": "cid-alpha",
+        "dataset_ref": null,
+        "fetch_capability_version": "qave.recovery-fetch.v1"
+      },
+      {
+        "file_id": "00000000-0000-4000-8000-000000000002",
+        "source_type": "provider_operation_ref",
+        "source_ref": "op-beta",
+        "backend_ref": null,
+        "piece_ref": null,
+        "cid": null,
+        "dataset_ref": null,
+        "fetch_capability_version": "qave.recovery-fetch.v1"
+      }
+    ],
+    "wrapped_keys": [
+      {
+        "file_id": "00000000-0000-4000-8000-000000000001",
+        "wrapped_file_key": null,
+        "key_wrap_algorithm": null,
+        "key_wrap_version": 1,
+        "nonce": null,
+        "iv": null,
+        "aad": null,
+        "tag": null,
+        "key_material_version": 1
+      },
+      {
+        "file_id": "00000000-0000-4000-8000-000000000002",
+        "wrapped_file_key": null,
+        "key_wrap_algorithm": null,
+        "key_wrap_version": 1,
+        "nonce": null,
+        "iv": null,
+        "aad": null,
+        "tag": null,
+        "key_material_version": 1
+      }
+    ],
+    "recovery_policy": {
+      "requires_wallet_auth": true,
+      "requires_recovery_key": true,
+      "trusted_device_supported": false,
+      "recover_all_mode": "batch_only",
+      "local_decrypt_required": true,
+      "local_package_required": true
+    },
+    "fwss_network": "phase2-reserved",
+    "fwss_api_version": "v1"
+  }
+}

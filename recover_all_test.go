@@ -4,12 +4,9 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/ecdsa"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,20 +18,8 @@ import (
 
 func TestRunRestoreAllReportsNotImplementedForLegacyRecoveryMap(t *testing.T) {
 	now := time.Date(2026, 3, 24, 0, 0, 0, 0, time.UTC)
-	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-
-	doc := buildRestorePlaintextTestDoc(t, now, vaultOwner, map[string]testRestoreFileEntry{
-		"reports/file1.txt": {
-			content:     []byte("test content"),
-			sourcePath:  "",
-			materialVer: 7,
-		},
-	}, privateKey)
-
 	tempDir := t.TempDir()
-	qrmPath := filepath.Join(tempDir, "sample-recover-all-legacy.qrm")
-	writeTestQRM(t, qrmPath, doc)
+	qrmPath := copyFixtureQRM(t, tempDir, "verify-legacy-map.qrm", "sample-recover-all-legacy.qrm")
 
 	var stdout bytes.Buffer
 	err := run([]string{"restore-all", qrmPath, "--signer", "manual"}, &stdout, ioDiscard{}, strings.NewReader("\n"), now)
@@ -48,20 +33,11 @@ func TestRunRestoreAllReportsNotImplementedForLegacyRecoveryMap(t *testing.T) {
 
 func TestRunRestoreAllRequiresSigner(t *testing.T) {
 	now := time.Date(2026, 3, 24, 1, 0, 0, 0, time.UTC)
-	doc := buildPlaintextRecoveryPackageV1Sample(now)
-
 	tempDir := t.TempDir()
-	qrmPath := filepath.Join(tempDir, "sample-restore-locked.qrm")
-	raw, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal sample: %v", err)
-	}
-	if err := os.WriteFile(qrmPath, append(raw, '\n'), 0o600); err != nil {
-		t.Fatalf("write sample: %v", err)
-	}
+	qrmPath := copyFixtureQRM(t, tempDir, "verify-plaintext-package.qrm", "sample-restore-locked.qrm")
 
 	var stdout bytes.Buffer
-	err = run([]string{"restore-all", qrmPath}, &stdout, ioDiscard{}, strings.NewReader(""), now)
+	err := run([]string{"restore-all", qrmPath}, &stdout, ioDiscard{}, strings.NewReader(""), now)
 	if err == nil || !strings.Contains(err.Error(), "UNSUPPORTED_SIGNER") {
 		t.Fatalf("expected unsupported signer error, got %v", err)
 	}
@@ -71,29 +47,10 @@ func TestRunRestoreAllSuccessMultiFile(t *testing.T) {
 	now := time.Date(2026, 3, 24, 2, 0, 0, 0, time.UTC)
 	tempDir := t.TempDir()
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-
-	file1Content := []byte("restored file one content")
-	file2Content := []byte("restored file two content here")
-
-	file1Path := writeTestFile(t, tempDir, "src1.enc", file1Content)
-	file2Path := writeTestFile(t, tempDir, "src2.enc", file2Content)
-
-	doc, _ := buildRestoreTestDoc(t, now, vaultOwner, map[string]testRestoreFileEntry{
-		"reports/file1.txt": {
-			content:     file1Content,
-			sourcePath:  file1Path,
-			materialVer: 7,
-		},
-		"docs/file2.txt": {
-			content:     file2Content,
-			sourcePath:  file2Path,
-			materialVer: 7,
-		},
-	}, privateKey)
-
-	qrmPath := filepath.Join(tempDir, "restore-multi.qrm")
-	writeTestQRM(t, qrmPath, doc)
+	doc := loadFixtureDoc(t, "restore-multi.qrm")
+	installFixtureBlob(t, "restore-multi-1.enc", fixtureRestoreMultiSourceOne)
+	installFixtureBlob(t, "restore-multi-2.enc", fixtureRestoreMultiSourceTwo)
+	qrmPath := copyFixtureQRM(t, tempDir, "restore-multi.qrm", "restore-multi.qrm")
 
 	var stdout bytes.Buffer
 	recoveryKey := "ABCDEFGHJKMNPQRST234"
@@ -153,22 +110,10 @@ func TestRunRestoreAllFailsClosedOnFetchError(t *testing.T) {
 	now := time.Date(2026, 3, 24, 3, 0, 0, 0, time.UTC)
 	tempDir := t.TempDir()
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-
-	doc, sourcePaths := buildRestoreTestDoc(t, now, vaultOwner, map[string]testRestoreFileEntry{
-		"missing.txt": {
-			content:     []byte("x"),
-			sourcePath:  filepath.Join(tempDir, "nonexistent_parent", "file.enc"),
-			materialVer: 7,
-		},
-	}, privateKey)
-
-	qrmPath := filepath.Join(tempDir, "restore-fail-fetch.qrm")
-	writeTestQRM(t, qrmPath, doc)
-
-	for _, sp := range sourcePaths {
-		os.Remove(sp)
-	}
+	doc := loadFixtureDoc(t, "restore-single.qrm")
+	installFixtureBlob(t, "restore-single-source.enc", fixtureRestoreSingleSource)
+	qrmPath := copyFixtureQRM(t, tempDir, "restore-single.qrm", "restore-fail-fetch.qrm")
+	_ = os.Remove(fixtureRestoreSingleSource)
 
 	var stdout bytes.Buffer
 	err := run(
@@ -199,37 +144,7 @@ func TestRunRestoreAllNormalizesKnownProviderPieceURLHostTypo(t *testing.T) {
 	now := time.Date(2026, 3, 24, 3, 30, 0, 0, time.UTC)
 	tempDir := t.TempDir()
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-
-	doc, _ := buildRestoreTestDoc(t, now, vaultOwner, map[string]testRestoreFileEntry{
-		"piece.txt": {
-			content:     []byte("restored through normalized provider piece url"),
-			materialVer: 7,
-		},
-	}, privateKey)
-
-	challenge, err := buildUnlockChallenge(doc)
-	if err != nil {
-		t.Fatalf("build challenge: %v", err)
-	}
-	signature := mustPersonalSign(t, privateKey, challenge)
-	key, err := deriveUnlockKey(doc, challenge, signature)
-	if err != nil {
-		t.Fatalf("derive key: %v", err)
-	}
-	payload, err := decryptPayload(doc, key)
-	if err != nil {
-		t.Fatalf("decrypt payload: %v", err)
-	}
-	payload.FileIndex[0].StorageRefs = []recoveryMapStorageRef{
-		{Kind: "provider_piece_url", Value: "http://calibration-pdp.infrafolio.com/piece/test-piece"},
-	}
-	ciphertext, tag, err := encryptPayload(doc, payload, key)
-	if err != nil {
-		t.Fatalf("re-encrypt payload: %v", err)
-	}
-	doc.PayloadCiphertext = ciphertext
-	doc.PayloadTag = tag
+	doc := loadFixtureDoc(t, "restore-normalized-piece-url.qrm")
 
 	originalFetchClient := fetchHTTPClient
 	fetchHTTPClient = &http.Client{
@@ -253,11 +168,10 @@ func TestRunRestoreAllNormalizesKnownProviderPieceURLHostTypo(t *testing.T) {
 		fetchHTTPClient = originalFetchClient
 	}()
 
-	qrmPath := filepath.Join(tempDir, "restore-normalized-piece-url.qrm")
-	writeTestQRM(t, qrmPath, doc)
+	qrmPath := copyFixtureQRM(t, tempDir, "restore-normalized-piece-url.qrm", "restore-normalized-piece-url.qrm")
 
 	var stdout bytes.Buffer
-	err = run(
+	err := run(
 		[]string{"restore-all", qrmPath, "--signer", "manual", "--no-browser"},
 		&stdout,
 		ioDiscard{},
@@ -288,20 +202,9 @@ func TestRunRestoreAllRetriesRecoveryKeyWithoutReunlock(t *testing.T) {
 	now := time.Date(2026, 3, 24, 4, 0, 0, 0, time.UTC)
 	tempDir := t.TempDir()
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-
-	filePath := writeTestFile(t, tempDir, "file.enc", []byte("valid encrypted content"))
-
-	doc, _ := buildRestoreTestDoc(t, now, vaultOwner, map[string]testRestoreFileEntry{
-		"file.txt": {
-			content:     []byte("valid plaintext"),
-			sourcePath:  filePath,
-			materialVer: 7,
-		},
-	}, privateKey)
-
-	qrmPath := filepath.Join(tempDir, "restore-fail-decrypt.qrm")
-	writeTestQRM(t, qrmPath, doc)
+	doc := loadFixtureDoc(t, "restore-single.qrm")
+	installFixtureBlob(t, "restore-single-source.enc", fixtureRestoreSingleSource)
+	qrmPath := copyFixtureQRM(t, tempDir, "restore-single.qrm", "restore-fail-decrypt.qrm")
 
 	var stdout bytes.Buffer
 	err := run(
@@ -338,20 +241,9 @@ func TestRunRestoreAllPathTraversalProtection(t *testing.T) {
 	now := time.Date(2026, 3, 24, 5, 0, 0, 0, time.UTC)
 	tempDir := t.TempDir()
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-
-	safePath := writeTestFile(t, tempDir, "safe.enc", []byte("safe content"))
-
-	doc, _ := buildRestoreTestDoc(t, now, vaultOwner, map[string]testRestoreFileEntry{
-		"docs/../../../etc/passwd": {
-			content:     []byte("safe content"),
-			sourcePath:  safePath,
-			materialVer: 7,
-		},
-	}, privateKey)
-
-	qrmPath := filepath.Join(tempDir, "restore-traversal.qrm")
-	writeTestQRM(t, qrmPath, doc)
+	doc := loadFixtureDoc(t, "restore-traversal.qrm")
+	installFixtureBlob(t, "restore-traversal.enc", fixtureRestoreTraversalSource)
+	qrmPath := copyFixtureQRM(t, tempDir, "restore-traversal.qrm", "restore-traversal.qrm")
 
 	var stdout bytes.Buffer
 	recoveryKey := "ABCDEFGHJKMNPQRST234"
@@ -389,20 +281,9 @@ func TestRunRestoreAllNoBrowserFlag(t *testing.T) {
 	now := time.Date(2026, 3, 24, 6, 0, 0, 0, time.UTC)
 	tempDir := t.TempDir()
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-
-	filePath := writeTestFile(t, tempDir, "test.enc", []byte("content"))
-
-	doc, _ := buildRestoreTestDoc(t, now, vaultOwner, map[string]testRestoreFileEntry{
-		"test.txt": {
-			content:     []byte("content"),
-			sourcePath:  filePath,
-			materialVer: 7,
-		},
-	}, privateKey)
-
-	qrmPath := filepath.Join(tempDir, "restore-nobrowser.qrm")
-	writeTestQRM(t, qrmPath, doc)
+	doc := loadFixtureDoc(t, "restore-single.qrm")
+	installFixtureBlob(t, "restore-single-source.enc", fixtureRestoreSingleSource)
+	qrmPath := copyFixtureQRM(t, tempDir, "restore-single.qrm", "restore-nobrowser.qrm")
 
 	var stdout bytes.Buffer
 	err := run(
@@ -428,19 +309,9 @@ func TestRunRestoreAllBrowserBridgeWaitsForDownload(t *testing.T) {
 	now := time.Date(2026, 3, 24, 6, 30, 0, 0, time.UTC)
 	tempDir := t.TempDir()
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-
-	filePath := writeTestFile(t, tempDir, "test.enc", []byte("content"))
-	doc, _ := buildRestoreTestDoc(t, now, vaultOwner, map[string]testRestoreFileEntry{
-		"test.txt": {
-			content:     []byte("content"),
-			sourcePath:  filePath,
-			materialVer: 7,
-		},
-	}, privateKey)
-
-	qrmPath := filepath.Join(tempDir, "restore-browser.qrm")
-	writeTestQRM(t, qrmPath, doc)
+	doc := loadFixtureDoc(t, "restore-single.qrm")
+	installFixtureBlob(t, "restore-single-source.enc", fixtureRestoreSingleSource)
+	qrmPath := copyFixtureQRM(t, tempDir, "restore-single.qrm", "restore-browser.qrm")
 
 	previousOpenBrowser := openBrowserURL
 	openBrowserURL = func(target string) error {
@@ -487,20 +358,9 @@ func TestRunRestoreAllMetamaskSignerDoesNotReadStdinForSignature(t *testing.T) {
 	now := time.Date(2026, 3, 24, 5, 0, 0, 0, time.UTC)
 	tempDir := t.TempDir()
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-
-	filePath := writeTestFile(t, tempDir, "source.enc", []byte("content"))
-
-	doc, _ := buildRestoreTestDoc(t, now, vaultOwner, map[string]testRestoreFileEntry{
-		"test.txt": {
-			content:     []byte("content"),
-			sourcePath:  filePath,
-			materialVer: 7,
-		},
-	}, privateKey)
-
-	qrmPath := filepath.Join(tempDir, "no-stdin-read.qrm")
-	writeTestQRM(t, qrmPath, doc)
+	doc := loadFixtureDoc(t, "restore-single.qrm")
+	installFixtureBlob(t, "restore-single-source.enc", fixtureRestoreSingleSource)
+	qrmPath := copyFixtureQRM(t, tempDir, "restore-single.qrm", "no-stdin-read.qrm")
 
 	var stdout bytes.Buffer
 	stdinRead, stdinWrite, err := os.Pipe()
@@ -633,21 +493,9 @@ func TestRunRestoreAllMetamaskSigner(t *testing.T) {
 	now := time.Date(2026, 3, 24, 5, 0, 0, 0, time.UTC)
 	tempDir := t.TempDir()
 	privateKey := mustPrivateKey(t, "1111111111111111111111111111111111111111111111111111111111111111")
-	vaultOwner := strings.ToLower(crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-
-	fileContent := []byte("metamask-restored content")
-	filePath := writeTestFile(t, tempDir, "secret.enc", fileContent)
-
-	doc, _ := buildRestoreTestDoc(t, now, vaultOwner, map[string]testRestoreFileEntry{
-		"secret.txt": {
-			content:     fileContent,
-			sourcePath:  filePath,
-			materialVer: 7,
-		},
-	}, privateKey)
-
-	qrmPath := filepath.Join(tempDir, "restore-metamask.qrm")
-	writeTestQRM(t, qrmPath, doc)
+	doc := loadFixtureDoc(t, "restore-single.qrm")
+	installFixtureBlob(t, "restore-single-source.enc", fixtureRestoreSingleSource)
+	qrmPath := copyFixtureQRM(t, tempDir, "restore-single.qrm", "restore-metamask.qrm")
 
 	var stdout bytes.Buffer
 	recoveryKey := "ABCDEFGHJKMNPQRST234"
@@ -772,8 +620,8 @@ func TestRunRestoreAllMetamaskSigner(t *testing.T) {
 	for _, f := range zr.File {
 		found[f.Name] = true
 	}
-	if !found["secret.txt"] {
-		t.Fatalf("expected secret.txt in zip, found: %v", found)
+	if !found["test.txt"] {
+		t.Fatalf("expected test.txt in zip, found: %v", found)
 	}
 }
 
@@ -924,198 +772,6 @@ func TestDownloadBridgeServesZip(t *testing.T) {
 	}
 }
 
-type testRestoreFileEntry struct {
-	content     []byte
-	sourcePath  string
-	materialVer int
-}
-
-func buildRestoreTestDoc(t *testing.T, now time.Time, vaultOwner string, files map[string]testRestoreFileEntry, privateKey *ecdsa.PrivateKey) (recoveryMapDocument, []string) {
-	t.Helper()
-
-	fileKeyBytes := bytes.Repeat([]byte{0x21}, fileKeyLengthBytes)
-	wrapIV := bytes.Repeat([]byte{0x56}, wrapIVLengthBytes)
-	contentIV := bytes.Repeat([]byte{0x34}, wrapIVLengthBytes)
-	saltBytes := bytes.Repeat([]byte{0x78}, 16)
-
-	recoveryKey := "ABCDEFGHJKMNPQRST234"
-	wrapKeyBytes, err := deriveRecoveryWrapKeyBytes(recoveryKey, recoveryPackageKDFProfile{
-		MaterialVersion: 7,
-		KDFAlgorithm:    recoveryKDFAlgorithmPBKDF2SHA256,
-		KDFSalt:         base64.StdEncoding.EncodeToString(saltBytes),
-		KDFParams: recoveryPackageKDFParams{
-			Iterations:       600000,
-			Hash:             recoveryKDFHashSHA256,
-			DerivedKeyLength: recoveryDerivedKeyLengthBytes,
-		},
-		KDFVersion: recoveryKDFVersion1,
-	})
-	if err != nil {
-		t.Fatalf("derive wrap key: %v", err)
-	}
-	defer zeroBytes(wrapKeyBytes)
-
-	matVersion := 7
-	kdfAlg := recoveryKDFAlgorithmPBKDF2SHA256
-	wrapAlg := recoveryWrapAlgorithmAES256GCM
-	wrapIVB64 := base64.StdEncoding.EncodeToString(wrapIV)
-
-	i := 0
-	fileIndex := make([]recoveryMapFileIndex, 0, len(files))
-	fetchSources := make([]recoveryPackageFetchSource, 0, len(files))
-	wrappedKeys := make([]recoveryPackageWrappedKey, 0, len(files))
-	sourcePaths := make([]string, 0)
-
-	for name, entry := range files {
-		mv := entry.materialVer
-		if mv == 0 {
-			mv = 7
-		}
-
-		ciphertext := mustSealAESGCM(t, fileKeyBytes, contentIV, entry.content)
-
-		if entry.sourcePath != "" {
-			if err := os.MkdirAll(filepath.Dir(entry.sourcePath), 0o700); err != nil {
-				t.Fatalf("create source dir: %v", err)
-			}
-			if err := os.WriteFile(entry.sourcePath, ciphertext, 0o600); err != nil {
-				t.Fatalf("write source: %v", err)
-			}
-			sourcePaths = append(sourcePaths, entry.sourcePath)
-		}
-
-		wrappedFileKey := mustSealAESGCM(t, wrapKeyBytes, wrapIV, fileKeyBytes)
-		wrappedB64 := base64.StdEncoding.EncodeToString(wrappedFileKey)
-		contentIVB64 := base64.StdEncoding.EncodeToString(contentIV)
-
-		fileID := fmt.Sprintf("00000000-0000-4000-8000-%012d", i+1)
-
-		fileIndex = append(fileIndex, recoveryMapFileIndex{
-			FileID:      fileID,
-			FileName:    filepath.Base(name),
-			LogicalPath: name,
-			Name:        name,
-			Size:        int64(len(entry.content)),
-			CID:         "",
-			StorageRefs: []recoveryMapStorageRef{
-				{Kind: "provider_operation_ref", Value: (&url.URL{Scheme: "file", Path: entry.sourcePath}).String()},
-			},
-			UploadedAt:    now.Format(time.RFC3339Nano),
-			SnapshotIndex: i,
-			ExpiresAt:     "2099-01-01T00:00:00Z",
-			Status:        "stored",
-			Encryption: recoveryMapFileEncryption{
-				Mode:                "phase1-transport-schema-only",
-				KeyMaterialIncluded: false,
-				KeyDerivation:       "phase2-wallet-bound-hkdf-reserved",
-				WalletBinding:       "not_included_in_phase1",
-			},
-			ContentEncryption: &recoveryPackageContentEncryption{
-				EncryptionVersion:          1,
-				ContentEncryptionAlgorithm: recoveryWrapAlgorithmAES256GCM,
-				ContentEncryptionIV:        contentIVB64,
-			},
-			RecoveryMaterialVersion: &mv,
-		})
-
-		fetchSources = append(fetchSources, recoveryPackageFetchSource{
-			FileID:                 fileID,
-			SourceType:             "provider_operation_ref",
-			SourceRef:              entry.sourcePath,
-			FetchCapabilityVersion: "qave.recovery-fetch.v1",
-		})
-		wrappedKeys = append(wrappedKeys, recoveryPackageWrappedKey{
-			FileID:                  fileID,
-			RecoveryMaterialVersion: &mv,
-			WrappedFileKey:          &wrappedB64,
-			KeyWrapAlgorithm:        &wrapAlg,
-			KeyWrapVersion:          recoveryWrapVersion1,
-			IV:                      &wrapIVB64,
-			KeyMaterialVersion:      recoveryKeyMaterialVersion1,
-		})
-		i++
-	}
-
-	payload := recoveryMapPayload{
-		Snapshot: &recoveryPackageSnapshot{
-			SchemaVersion:         recoveryPackageSchemaVersion,
-			PackageID:             "test-restore-package",
-			MapID:                 "test-restore-package",
-			VaultOwner:            vaultOwner,
-			VaultStateHash:        strings.Repeat("a", 64),
-			GeneratedAt:           now.Format(time.RFC3339Nano),
-			SubscriptionExpiresAt: "2099-01-01T00:00:00Z",
-			FileCount:             len(fileIndex),
-			PackageProtectionMode: payloadProtectionWalletBoundEncrypted,
-			RecoveryFlowVersion:   "recover-all.v1",
-			RecoveryKDFProfiles: []recoveryPackageKDFProfile{
-				{
-					MaterialVersion: matVersion,
-					KDFAlgorithm:    kdfAlg,
-					KDFSalt:         base64.StdEncoding.EncodeToString(saltBytes),
-					KDFParams: recoveryPackageKDFParams{
-						Iterations:       600000,
-						Hash:             recoveryKDFHashSHA256,
-						DerivedKeyLength: recoveryDerivedKeyLengthBytes,
-					},
-					KDFVersion: recoveryKDFVersion1,
-				},
-			},
-		},
-		FileIndex:    fileIndex,
-		FetchSources: fetchSources,
-		WrappedKeys:  wrappedKeys,
-		RecoveryPolicy: &recoveryPackageRecoveryPolicy{
-			RequiresWalletAuth:     true,
-			RequiresRecoveryKey:    true,
-			TrustedDeviceSupported: false,
-			RecoverAllMode:         "batch_only",
-			LocalDecryptRequired:   true,
-			LocalPackageRequired:   true,
-		},
-		FWSSNetwork:    "phase2-reserved",
-		FWSSAPIVersion: "v1",
-	}
-
-	doc := recoveryMapDocument{
-		Header: recoveryMapHeader{
-			Schema:                recoveryMapSchema,
-			MapID:                 "test-restore-package",
-			GeneratedAt:           now.Format(time.RFC3339Nano),
-			VaultOwner:            vaultOwner,
-			VaultStateHash:        strings.Repeat("a", 64),
-			SubscriptionExpiresAt: "2099-01-01T00:00:00Z",
-			PayloadEncryption: recoveryPayloadEncryption{
-				Algorithm:         "AES-256-GCM",
-				KDF:               "HKDF-SHA256",
-				Nonce:             "MDEyMzQ1Njc4OWFi",
-				Binding:           "wallet_bound_personal_sign_v1",
-				PayloadProtection: payloadProtectionWalletBoundEncrypted,
-				Encoding:          "base64",
-				SigningScope:      signingScopeLegacyPerExport,
-			},
-		},
-	}
-
-	challenge, err := buildUnlockChallenge(doc)
-	if err != nil {
-		t.Fatalf("build challenge: %v", err)
-	}
-	signature := mustPersonalSign(t, privateKey, challenge)
-	key, err := deriveUnlockKey(doc, challenge, signature)
-	if err != nil {
-		t.Fatalf("derive key: %v", err)
-	}
-	ciphertext, tag, err := encryptPayload(doc, payload, key)
-	if err != nil {
-		t.Fatalf("encrypt payload: %v", err)
-	}
-	doc.PayloadCiphertext = ciphertext
-	doc.PayloadTag = tag
-
-	return doc, sourcePaths
-}
-
 func buildRestoreAllStdin(t *testing.T, doc recoveryMapDocument, privateKey *ecdsa.PrivateKey, recoveryKey string) io.Reader {
 	challenge, err := buildUnlockChallenge(doc)
 	if err != nil {
@@ -1123,175 +779,6 @@ func buildRestoreAllStdin(t *testing.T, doc recoveryMapDocument, privateKey *ecd
 	}
 	signature := mustPersonalSign(t, privateKey, challenge)
 	return strings.NewReader(signature + "\n" + recoveryKey + "\n")
-}
-
-func buildRestorePlaintextTestDoc(t *testing.T, now time.Time, vaultOwner string, files map[string]testRestoreFileEntry, privateKey *ecdsa.PrivateKey) recoveryMapDocument {
-	t.Helper()
-
-	fileKeyBytes := bytes.Repeat([]byte{0x21}, fileKeyLengthBytes)
-	wrapIV := bytes.Repeat([]byte{0x56}, wrapIVLengthBytes)
-	contentIV := bytes.Repeat([]byte{0x34}, wrapIVLengthBytes)
-	saltBytes := bytes.Repeat([]byte{0x78}, 16)
-
-	matVersion := 7
-	wrapAlg := recoveryWrapAlgorithmAES256GCM
-	wrapIVB64 := base64.StdEncoding.EncodeToString(wrapIV)
-	contentIVB64 := base64.StdEncoding.EncodeToString(contentIV)
-
-	i := 0
-	fileIndex := make([]recoveryMapFileIndex, 0, len(files))
-	fetchSources := make([]recoveryPackageFetchSource, 0, len(files))
-	wrappedKeys := make([]recoveryPackageWrappedKey, 0, len(files))
-
-	for name, entry := range files {
-		mv := entry.materialVer
-		if mv == 0 {
-			mv = 7
-		}
-
-		ciphertext := mustSealAESGCM(t, fileKeyBytes, contentIV, entry.content)
-
-		if entry.sourcePath != "" {
-			if err := os.MkdirAll(filepath.Dir(entry.sourcePath), 0o700); err != nil {
-				t.Fatalf("create source dir: %v", err)
-			}
-			if err := os.WriteFile(entry.sourcePath, ciphertext, 0o600); err != nil {
-				t.Fatalf("write source: %v", err)
-			}
-		}
-
-		wrappedFileKey := mustSealAESGCM(t, bytes.Repeat([]byte{0xAB}, 32), wrapIV, fileKeyBytes)
-		wrappedB64 := base64.StdEncoding.EncodeToString(wrappedFileKey)
-
-		fileID := fmt.Sprintf("00000000-0000-4000-8000-%012d", i+1)
-
-		fileIndex = append(fileIndex, recoveryMapFileIndex{
-			FileID:      fileID,
-			FileName:    filepath.Base(name),
-			LogicalPath: name,
-			Name:        name,
-			Size:        int64(len(entry.content)),
-			CID:         "",
-			StorageRefs: []recoveryMapStorageRef{
-				{Kind: "provider_operation_ref", Value: (&url.URL{Scheme: "file", Path: entry.sourcePath}).String()},
-			},
-			UploadedAt:    now.Format(time.RFC3339Nano),
-			SnapshotIndex: i,
-			ExpiresAt:     "2099-01-01T00:00:00Z",
-			Status:        "stored",
-			Encryption: recoveryMapFileEncryption{
-				Mode:                "phase1-transport-schema-only",
-				KeyMaterialIncluded: false,
-				KeyDerivation:       "phase2-wallet-bound-hkdf-reserved",
-				WalletBinding:       "not_included_in_phase1",
-			},
-			ContentEncryption: &recoveryPackageContentEncryption{
-				EncryptionVersion:          1,
-				ContentEncryptionAlgorithm: recoveryWrapAlgorithmAES256GCM,
-				ContentEncryptionIV:        contentIVB64,
-			},
-			RecoveryMaterialVersion: &mv,
-		})
-
-		fetchSources = append(fetchSources, recoveryPackageFetchSource{
-			FileID:                 fileID,
-			SourceType:             "provider_operation_ref",
-			SourceRef:              entry.sourcePath,
-			FetchCapabilityVersion: "qave.recovery-fetch.v1",
-		})
-		wrappedKeys = append(wrappedKeys, recoveryPackageWrappedKey{
-			FileID:                  fileID,
-			RecoveryMaterialVersion: &mv,
-			WrappedFileKey:          &wrappedB64,
-			KeyWrapAlgorithm:        &wrapAlg,
-			KeyWrapVersion:          recoveryWrapVersion1,
-			IV:                      &wrapIVB64,
-			KeyMaterialVersion:      recoveryKeyMaterialVersion1,
-		})
-		i++
-	}
-
-	payload := recoveryMapPayload{
-		Snapshot: &recoveryPackageSnapshot{
-			SchemaVersion:         recoveryPackageSchemaVersion,
-			PackageID:             "test-restore-package",
-			MapID:                 "test-restore-package",
-			VaultOwner:            vaultOwner,
-			VaultStateHash:        strings.Repeat("a", 64),
-			GeneratedAt:           now.Format(time.RFC3339Nano),
-			SubscriptionExpiresAt: "2099-01-01T00:00:00Z",
-			FileCount:             len(fileIndex),
-			PackageProtectionMode: payloadProtectionLegacyPlaintext,
-			RecoveryFlowVersion:   "recover-all.v1",
-			RecoveryKDFProfiles: []recoveryPackageKDFProfile{
-				{
-					MaterialVersion: matVersion,
-					KDFAlgorithm:    recoveryKDFAlgorithmPBKDF2SHA256,
-					KDFSalt:         base64.StdEncoding.EncodeToString(saltBytes),
-					KDFParams: recoveryPackageKDFParams{
-						Iterations:       600000,
-						Hash:             recoveryKDFHashSHA256,
-						DerivedKeyLength: recoveryDerivedKeyLengthBytes,
-					},
-					KDFVersion: recoveryKDFVersion1,
-				},
-			},
-		},
-		FileIndex:    fileIndex,
-		FetchSources: fetchSources,
-		WrappedKeys:  wrappedKeys,
-		RecoveryPolicy: &recoveryPackageRecoveryPolicy{
-			RequiresWalletAuth:     true,
-			RequiresRecoveryKey:    true,
-			TrustedDeviceSupported: false,
-			RecoverAllMode:         "batch_only",
-			LocalDecryptRequired:   true,
-			LocalPackageRequired:   true,
-		},
-		FWSSNetwork:    "phase2-reserved",
-		FWSSAPIVersion: "v1",
-	}
-
-	return recoveryMapDocument{
-		Header: recoveryMapHeader{
-			Schema:                recoveryMapSchema,
-			MapID:                 "test-restore-package",
-			GeneratedAt:           now.Format(time.RFC3339Nano),
-			VaultOwner:            vaultOwner,
-			VaultStateHash:        strings.Repeat("a", 64),
-			SubscriptionExpiresAt: "2099-01-01T00:00:00Z",
-			PayloadEncryption: recoveryPayloadEncryption{
-				Algorithm:         "AES-256-GCM",
-				KDF:               "HKDF-SHA256",
-				Nonce:             "MDEyMzQ1Njc4OWFi",
-				Binding:           "wallet_bound_personal_sign_v1",
-				PayloadProtection: payloadProtectionLegacyPlaintext,
-				Encoding:          "base64",
-				SigningScope:      signingScopeLegacyPerExport,
-			},
-		},
-		Payload: &payload,
-	}
-}
-
-func writeTestFile(t *testing.T, tempDir, name string, content []byte) string {
-	t.Helper()
-	path := filepath.Join(tempDir, name)
-	if err := os.WriteFile(path, content, 0o600); err != nil {
-		t.Fatalf("write test file: %v", err)
-	}
-	return path
-}
-
-func writeTestQRM(t *testing.T, qrmPath string, doc recoveryMapDocument) {
-	t.Helper()
-	raw, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal qrm: %v", err)
-	}
-	if err := os.WriteFile(qrmPath, append(raw, '\n'), 0o600); err != nil {
-		t.Fatalf("write qrm: %v", err)
-	}
 }
 
 func extractZipPath(output string) string {
