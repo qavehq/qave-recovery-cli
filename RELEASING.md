@@ -3,6 +3,7 @@
 This note is for maintainers only.
 It is not part of the normal end-user recovery flow.
 It covers release assets for the standalone recovery CLI only, not Recovery Package generation or other producer-side systems.
+Publishing release assets from this repository does not grant any right to use the Qave name, logo, trademarks, or brand assets.
 
 ## Build release assets
 

@@ -28,6 +28,13 @@ It does **not** include:
 * producer-side implementation
 
 For the repository boundary in one place, see [docs/SCOPE.md](docs/SCOPE.md).
+For trademark and brand-use boundaries, see [docs/TRADEMARKS.md](docs/TRADEMARKS.md).
+
+## License / Trademark
+
+The code in this repository is licensed under GPLv3. Copyright remains with the respective authors and contributors.
+
+The Qave name, logo, trademarks, and brand assets are not licensed by default under the code license. Modified, forked, or redistributed versions must not imply that they are an official Qave release unless separately authorized.
 
 ## Install
 
@@ -61,6 +68,7 @@ Restore all files:
 ## User guide
 
 For the full recovery guide and end-user instructions, see [docs/RECOVERY_GUIDE.md](docs/RECOVERY_GUIDE.md).
+
 ## Maintainers
 
 If you are preparing an official release asset, see [RELEASING.md](RELEASING.md).
