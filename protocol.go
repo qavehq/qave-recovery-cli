@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -238,6 +239,23 @@ func derivePayloadKeyFromSessionSeed(doc recoveryMapDocument, sessionSeed []byte
 	return key, nil
 }
 
+func encryptPayload(doc recoveryMapDocument, payload recoveryMapPayload, key []byte) (string, string, error) {
+	plaintext, err := canonicalPayloadJSON(payload)
+	if err != nil {
+		return "", "", err
+	}
+
+	sealed, err := sealPayloadBytes(doc, key, plaintext)
+	if err != nil {
+		return "", "", err
+	}
+	ciphertextLen := len(sealed) - aesGCMTagLength
+	if ciphertextLen < 0 {
+		return "", "", newCLIError("QRM_CORRUPTED", "encrypted payload is shorter than gcm tag")
+	}
+	return base64.StdEncoding.EncodeToString(sealed[:ciphertextLen]), base64.StdEncoding.EncodeToString(sealed[ciphertextLen:]), nil
+}
+
 func decryptPayload(doc recoveryMapDocument, key []byte) (recoveryMapPayload, error) {
 	switch payloadProtectionOf(doc) {
 	case payloadProtectionLegacyPlaintext:
@@ -271,6 +289,59 @@ func decryptPayload(doc recoveryMapDocument, key []byte) (recoveryMapPayload, er
 	default:
 		return recoveryMapPayload{}, newCLIError("QRM_CORRUPTED", "unknown payload protection mode")
 	}
+}
+
+func canonicalPayloadJSON(payload recoveryMapPayload) ([]byte, error) {
+	files := make([]recoveryMapFileIndex, 0, len(payload.FileIndex))
+	for _, file := range payload.FileIndex {
+		storageRefs := append([]recoveryMapStorageRef(nil), file.StorageRefs...)
+		slices.SortFunc(storageRefs, compareRecoveryStorageRefs)
+
+		files = append(files, recoveryMapFileIndex{
+			FileID:                  file.FileID,
+			FileName:                file.FileName,
+			LogicalPath:             file.LogicalPath,
+			Name:                    file.Name,
+			Size:                    file.Size,
+			MIMEType:                file.MIMEType,
+			CID:                     file.CID,
+			StorageRefs:             storageRefs,
+			UploadedAt:              file.UploadedAt,
+			SnapshotIndex:           file.SnapshotIndex,
+			ExpiresAt:               file.ExpiresAt,
+			Status:                  file.Status,
+			Encryption:              file.Encryption,
+			ContentEncryption:       file.ContentEncryption,
+			RecoveryMaterialVersion: file.RecoveryMaterialVersion,
+		})
+	}
+	slices.SortFunc(files, compareRecoveryMapFiles)
+
+	fetchSources := append([]recoveryPackageFetchSource(nil), payload.FetchSources...)
+	slices.SortFunc(fetchSources, compareRecoveryFetchSources)
+
+	wrappedKeys := append([]recoveryPackageWrappedKey(nil), payload.WrappedKeys...)
+	slices.SortFunc(wrappedKeys, compareRecoveryWrappedKeys)
+
+	recoveryKDFProfiles := make([]recoveryPackageKDFProfile, 0)
+	if payload.Snapshot != nil {
+		recoveryKDFProfiles = append(recoveryKDFProfiles, payload.Snapshot.RecoveryKDFProfiles...)
+		slices.SortFunc(recoveryKDFProfiles, compareRecoveryKDFProfiles)
+	}
+
+	envelope := recoveryMapPayload{
+		Snapshot:       cloneRecoveryPackageSnapshot(payload.Snapshot),
+		FetchSources:   fetchSources,
+		WrappedKeys:    wrappedKeys,
+		RecoveryPolicy: cloneRecoveryPackagePolicy(payload.RecoveryPolicy),
+		FWSSNetwork:    payload.FWSSNetwork,
+		FWSSAPIVersion: payload.FWSSAPIVersion,
+		FileIndex:      files,
+	}
+	if envelope.Snapshot != nil {
+		envelope.Snapshot.RecoveryKDFProfiles = recoveryKDFProfiles
+	}
+	return json.Marshal(envelope)
 }
 
 func inspectRecoveryPackage(doc recoveryMapDocument, payload *recoveryMapPayload) recoveryPackageSummary {
@@ -327,6 +398,41 @@ func inspectRecoveryPackage(doc recoveryMapDocument, payload *recoveryMapPayload
 	return summary
 }
 
+func cloneRecoveryPackageSnapshot(snapshot *recoveryPackageSnapshot) *recoveryPackageSnapshot {
+	if snapshot == nil {
+		return nil
+	}
+	cloned := *snapshot
+	return &cloned
+}
+
+func cloneRecoveryPackagePolicy(policy *recoveryPackageRecoveryPolicy) *recoveryPackageRecoveryPolicy {
+	if policy == nil {
+		return nil
+	}
+	cloned := *policy
+	return &cloned
+}
+
+func sealPayloadBytes(doc recoveryMapDocument, key []byte, plaintext []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	nonce, err := decodeBase64String(doc.Header.PayloadEncryption.Nonce)
+	if err != nil {
+		return nil, newCLIError("QRM_CORRUPTED", "payload nonce must be base64 encoded")
+	}
+	if len(nonce) != gcm.NonceSize() {
+		return nil, newCLIError("QRM_CORRUPTED", "payload nonce length does not match AES-GCM requirements")
+	}
+	return gcm.Seal(nil, nonce, plaintext, nil), nil
+}
+
 func openPayloadBytes(doc recoveryMapDocument, key []byte, sealed []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -379,6 +485,58 @@ func normalizeAddress(value string) string {
 		return ""
 	}
 	return strings.ToLower(common.HexToAddress(trimmed).Hex())
+}
+
+func compareRecoveryStorageRefs(a, b recoveryMapStorageRef) int {
+	if a.Kind == b.Kind {
+		return strings.Compare(a.Value, b.Value)
+	}
+	return strings.Compare(a.Kind, b.Kind)
+}
+
+func compareRecoveryMapFiles(a, b recoveryMapFileIndex) int {
+	if a.SnapshotIndex != b.SnapshotIndex {
+		if a.SnapshotIndex < b.SnapshotIndex {
+			return -1
+		}
+		return 1
+	}
+	if v := strings.Compare(a.Name, b.Name); v != 0 {
+		return v
+	}
+	if v := strings.Compare(a.UploadedAt, b.UploadedAt); v != 0 {
+		return v
+	}
+	if v := strings.Compare(a.CID, b.CID); v != 0 {
+		return v
+	}
+	left, _ := json.Marshal(a.StorageRefs)
+	right, _ := json.Marshal(b.StorageRefs)
+	return strings.Compare(string(left), string(right))
+}
+
+func compareRecoveryFetchSources(a, b recoveryPackageFetchSource) int {
+	if v := strings.Compare(a.FileID, b.FileID); v != 0 {
+		return v
+	}
+	if v := strings.Compare(a.SourceType, b.SourceType); v != 0 {
+		return v
+	}
+	return strings.Compare(a.SourceRef, b.SourceRef)
+}
+
+func compareRecoveryWrappedKeys(a, b recoveryPackageWrappedKey) int {
+	return strings.Compare(a.FileID, b.FileID)
+}
+
+func compareRecoveryKDFProfiles(a, b recoveryPackageKDFProfile) int {
+	if a.MaterialVersion != b.MaterialVersion {
+		if a.MaterialVersion < b.MaterialVersion {
+			return -1
+		}
+		return 1
+	}
+	return strings.Compare(a.KDFAlgorithm, b.KDFAlgorithm)
 }
 
 const aesGCMTagLength = 16
