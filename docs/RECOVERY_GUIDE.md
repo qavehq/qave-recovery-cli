@@ -1,144 +1,180 @@
 # Recovery Guide
 
-## Recovery Package: what it is
-
-Your Recovery Package is the file that lets you recover your Qave files after you move to a new computer or lose access to your old device. Its file name usually ends with `.qrm`.
-
-It is not a normal download and it is not a plain backup copy of your files. Think of it as the package consumed by the official Qave recovery tool to verify, unlock, decrypt, and rebuild your files.
-
-This guide explains how to use an existing Recovery Package. It does not describe how Recovery Packages are produced.
+This guide is for end users who need to recover files from a Qave Recovery Package.
 
 ## Before you start
 
-Prepare these 3 things before you type any command:
+Required materials:
 
-* your Recovery Package file, for example `something.qrm`
-* the wallet account associated with this Recovery Package
-* the Recovery Key for that same wallet account
+- your Recovery Package file ending in `.qrm`
+- the wallet account associated with that package
+- the Recovery Key for that wallet account
 
-## Step 0. Download the official recovery tool
+Required environment:
 
-Before you run any recovery command, open this release page:
+- a Mac
+- Terminal
+- a web browser with MetaMask installed
+- internet access
+- enough free disk space for:
+  - the CLI tool
+  - the Recovery Package file (`.qrm`)
+  - temporary downloaded encrypted files during recovery
+  - the final restored zip
 
-`https://github.com/lvbu1984/qave-recovery-cli/releases`
+Recovery may take time, especially for larger packages. During recovery, the tool may download encrypted file data, decrypt it locally on your Mac, and then rebuild a final zip that contains the restored files.
 
-On macOS, look for one of these files:
+If any required material or environment item is missing, stop here and prepare it before you continue.
 
-* `qave-recovery-cli-darwin-arm64-v0.1.0.zip` if your Mac uses Apple Silicon
-* `qave-recovery-cli-darwin-amd64-v0.1.0.zip` if your Mac uses an Intel chip
+## Step 0. Prepare the recovery environment
 
-Download the zip file that matches your Mac, open it to extract the recovery tool, and then continue with the steps below.
+### 0.1 Check your Mac type with `uname -m`
 
-## Step 1. Check that the Recovery Package is okay
+Run this command in Terminal:
 
-You are doing this step only to confirm the package can be read.
+```bash
+uname -m
+```
 
-### Command
+Use the result to choose the correct download:
+
+- `arm64` for Apple Silicon Macs
+- `x86_64` for Intel Macs
+
+### 0.2 Download the official recovery tool from this repository's GitHub Releases page
+
+Open this repository's GitHub Releases page and download the correct macOS asset:
+
+- `qave-recovery-cli-darwin-arm64-<version>.zip` for `arm64`
+- `qave-recovery-cli-darwin-amd64-<version>.zip` for `x86_64`
+
+### 0.3 Extract the tool
+
+Open the downloaded zip file to extract it, then open Terminal in the extracted folder so you can run `./qave-recovery-cli ...`.
+
+### 0.4 Make sure MetaMask is installed, unlocked, and switched to the correct wallet
+
+Before you run `unlock` or `restore-all`, make sure:
+
+- MetaMask is installed in your browser
+- MetaMask is unlocked
+- MetaMask is switched to the wallet account associated with your Recovery Package
+
+### 0.5 Keep the `.qrm` file, wallet, and Recovery Key ready before continuing
+
+Before you continue, make sure you have:
+
+- the `.qrm` file you want to recover
+- access to the wallet account associated with that package
+- the matching Recovery Key
+
+## Step 1. Check that the Recovery Package file is okay
+
+Run:
 
 ```bash
 ./qave-recovery-cli verify /path/to/your-file.qrm
 ```
 
-### Normal result
+What you will normally see:
 
-* you will see basic lines such as `schema=...` and `vault_owner=...`
-* if you see `file_count=locked`, do not panic
+- lines such as `schema=...`, `vault_owner=...`, and `payload_protection=...`
+- often `file_count=locked`
 
-`file_count=locked` is the normal result for an encrypted Recovery Package. It does not mean the file is broken. It means the next step is to unlock it with MetaMask.
+Do not worry if you see `file_count=locked`.
+That is the normal result for an encrypted Recovery Package.
+It does not mean the file is broken.
+It means the next step is to unlock it with MetaMask.
 
 ## Step 2. Unlock the Recovery Package with MetaMask
 
-You are doing this step to prove that you still control the correct wallet.
-
-### Command
+Run:
 
 ```bash
 ./qave-recovery-cli unlock /path/to/your-file.qrm --signer metamask
 ```
 
-### Important
+Important:
 
-* do not remove `--signer metamask`
-* this command must use MetaMask
+- do not remove `--signer metamask`
+- this step must use MetaMask
 
-### Normal result
+What you do in this step:
 
-* your browser opens a local Qave signing page
-* the page shows a button called `Sign Challenge`
-* you click `Sign Challenge` to continue
-* MetaMask asks you to sign
-* the terminal then shows lines such as `challenge_verified=true` and `payload_unlocked=true`
+1. Wait for the browser signing page to open
+2. If asked, connect MetaMask
+3. Click `Sign Challenge`
+4. Confirm the signature in MetaMask
 
-If the browser does not open by itself, look at the terminal and open the printed `sign_url=...` in your browser.
+What you will normally see in the terminal:
 
-If you are still on the signing page and nothing is happening, the next action is simple: click `Sign Challenge`.
+- `challenge_verified=true`
+- `payload_unlocked=true`
+
+If the browser does not open by itself, copy the printed `sign_url=...` from the terminal into your browser.
 
 ## Step 3. Start full recovery
 
-This is the command that actually rebuilds your files and prepares the recovery zip.
-
-### Command
+Run:
 
 ```bash
 ./qave-recovery-cli restore-all /path/to/your-file.qrm --signer metamask
 ```
 
-### Important
+Important:
 
-* do not remove `--signer metamask`
-* this step asks for MetaMask again
-* this step also asks for your Recovery Key
+- do not remove `--signer metamask`
+- this step asks for MetaMask again
+- this step also asks for your Recovery Key
 
-### Normal result
+What you do in this step:
 
-* the browser opens the signing page again
-* you click `Sign Challenge` again
-* MetaMask asks you to sign again
-* the terminal then asks: `Paste recovery key (hyphens/spaces optional):`
+1. Wait for the browser signing page to open again
+2. Click `Sign Challenge` again
+3. Confirm the signature in MetaMask again
+4. Return to the terminal
+5. Enter your Recovery Key when asked
 
-## How to enter the Recovery Key
+The terminal prompt looks like this:
 
-You can type the same Recovery Key in any of these 3 ways:
+```text
+Paste recovery key (hyphens/spaces optional):
+```
 
-* `ABCDE-FGHJK-MNPQR-ST234`
-* `ABCDE FGHJK MNPQR ST234`
-* `ABCDEFGHJKMNPQRST234`
+You can enter the same Recovery Key in any of these formats:
 
-The recovery tool will automatically recognize the format. You do not need to guess which one is correct.
+- `ABCDE-FGHJK-MNPQR-ST234`
+- `ABCDE FGHJK MNPQR ST234`
+- `ABCDEFGHJKMNPQRST234`
 
-If the Recovery Key is wrong, the tool will say `Recovery Key incorrect. Please try again.` and ask for the key again.
+The tool will recognize the format automatically.
+You do not need to guess which one to use.
 
-If that happens, do not start over. You do not need to run `unlock` again. You do not need to sign with MetaMask again. Just enter the Recovery Key again in the same recovery session.
+If the Recovery Key is wrong:
+
+- the tool will say `Recovery Key incorrect. Please try again.`
+- the tool will ask for the Recovery Key again
+- you do not need to run `unlock` again
+- you do not need to sign with MetaMask again
 
 ## Step 4. Get the recovered files
 
-When recovery finishes normally, the terminal will show lines like these:
+When recovery succeeds, the terminal will show lines like these:
 
-* `restore_all_complete=true`
-* `files_restored=...`
-* `zip_path=...`
+- `restore_all_complete=true`
+- `files_restored=...`
+- `zip_path=...`
 
-The tool creates one zip file that contains your recovered files. In most cases, your browser will open automatically and start the zip download for you.
+What happens next:
 
-If the browser download starts, save that zip and open it to check your files.
+- the tool creates one zip file that contains your recovered files
+- your browser will usually open automatically and start downloading that zip
 
-If the browser does not start, look at the terminal output and open the file shown after `zip_path=`. That is your recovery result.
+How to confirm recovery worked:
 
-You can treat recovery as successful when all 3 of these are true:
+1. Confirm the terminal shows `restore_all_complete=true`
+2. Find the zip file
+3. Open the zip file
+4. Check that your recovered files are inside
 
-* the terminal shows `restore_all_complete=true`
-* you can find the zip file
-* you can open the zip and see your recovered files inside
-
-## Common situations
-
-* `file_count=locked` during `verify` is normal; it means you should continue to unlock
-* seeing the `Sign Challenge` page is normal; click the button to continue
-* if the Recovery Key is wrong, the tool lets you type it again in the same `restore-all` session
-* if the wallet in MetaMask is not the wallet associated with the Recovery Package, recovery will not continue
-
-## The 3 things that matter most
-
-* keep the correct `.qrm` file
-* use the correct MetaMask wallet
-* enter the correct Recovery Key
+If the browser does not start downloading automatically, look at the `zip_path=...` line in the terminal and open that file directly.

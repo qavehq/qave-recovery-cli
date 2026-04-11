@@ -86,6 +86,10 @@ func runRestoreAll(args []string, stdout io.Writer, stdin io.Reader, now time.Ti
 	_, _ = fmt.Fprint(stdout, "restore_all_requires_recovery_key=true\n")
 	_, _ = fmt.Fprintf(stdout, "vault_state_hash=%s\n", doc.Header.VaultStateHash)
 	_, _ = fmt.Fprintf(stdout, "restoring_files=%d\n", len(result.payload.FileIndex))
+	_, _ = fmt.Fprintf(stdout, "fetch_sources_count=%d\n", len(result.payload.FetchSources))
+	if options.PieceBaseURL != "" {
+		_, _ = fmt.Fprintf(stdout, "piece_base_url=%s\n", options.PieceBaseURL)
+	}
 
 	restoreWorkspace, err := os.MkdirTemp("", "qave-restore-*")
 	if err != nil {
@@ -227,6 +231,7 @@ func parseRestoreAllArgs(args []string) (restoreAllOptions, error) {
 	var opts restoreAllOptions
 	opts.QRMPath = pathArg
 	opts.NoBrowser = false
+	opts.PieceBaseURL = strings.TrimSpace(os.Getenv(pieceGatewayBaseURLEnv))
 
 	i := 0
 	for i < len(restArgs) {
@@ -286,7 +291,7 @@ func restoreAllFiles(payload recoveryMapPayload, recoveryKey string, pieceBaseUR
 			return nil, newCLIError("CONTENT_ENCRYPTION_METADATA_MISSING", fmt.Sprintf("file %d (%s) is missing content_encryption metadata", fileNum, file.Name))
 		}
 
-		source, err := resolveFetchSource(file, pieceBaseURL)
+		source, err := resolveFetchSource(file, pieceBaseURL, payload.FetchSources)
 		if err != nil {
 			return nil, newCLIError("FETCH_SOURCE_ERROR", fmt.Sprintf("file %d (%s): %s", fileNum, file.Name, err.Error()))
 		}
@@ -294,10 +299,15 @@ func restoreAllFiles(payload recoveryMapPayload, recoveryKey string, pieceBaseUR
 		_, _ = fmt.Fprintf(stdout, "restoring_file=%d/%d name=%s source=%s\n", fileNum, totalFiles, file.Name, source.description)
 
 		ciphertextPath := filepath.Join(workspaceDir, "ciphertext", fmt.Sprintf("%06d.enc", fileNum))
-		_, err = fetchSourceToFile(context.Background(), source, ciphertextPath)
+		fetchStart := time.Now()
+		fetchedBytes, err := fetchSourceToFileWithProgress(context.Background(), source, ciphertextPath, func(bytesWritten int64) {
+			_, _ = fmt.Fprintf(stdout, "fetch_progress=%d/%d bytes=%d elapsed=%s\n", fileNum, totalFiles, bytesWritten, time.Since(fetchStart).Truncate(time.Second))
+		})
 		if err != nil {
+			_, _ = fmt.Fprintf(stdout, "fetch_failed=%d/%d bytes=%d elapsed=%s\n", fileNum, totalFiles, fetchedBytes, time.Since(fetchStart).Truncate(time.Second))
 			return nil, newCLIError("FETCH_FAILED", fmt.Sprintf("file %d (%s) fetch failed: %s", fileNum, file.Name, err.Error()))
 		}
+		_, _ = fmt.Fprintf(stdout, "fetch_complete=%d/%d bytes=%d elapsed=%s\n", fileNum, totalFiles, fetchedBytes, time.Since(fetchStart).Truncate(time.Second))
 
 		wrappedKey, err := selectWrappedKeyByFileID(payload, strings.TrimSpace(file.FileID))
 		if err != nil {

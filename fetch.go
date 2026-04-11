@@ -18,21 +18,60 @@ import (
 
 const (
 	defaultFetchOutputDir   = "qave-fetched"
-	defaultFetchHTTPTimeout = 60 * time.Second
 	pieceGatewayBaseURLEnv  = "QAVE_FETCH_PIECE_BASE_URL"
 	recoveryPieceHostTypo   = "calibration-pdp.infrafolio.com"
 	recoveryPieceHostFixed  = "caliberation-pdp.infrafolio.com"
+
+	// Fetch timeout defaults — tuned for disaster-recovery "last resort" retrieval
+	// where completing the download matters more than speed.
+	defaultFetchOverallTimeout    = 6 * time.Hour       // hard cap; 0 = no limit
+	defaultFetchInactivityTimeout = 10 * time.Minute    // stall detection
+	defaultFetchConnectTimeout    = 60 * time.Second    // time to receive response headers
+
+	fetchOverallTimeoutEnv    = "QAVE_FETCH_OVERALL_TIMEOUT_SECONDS"
+	fetchInactivityTimeoutEnv = "QAVE_FETCH_INACTIVITY_TIMEOUT_SECONDS"
 )
 
+// fetchTimeoutConfig holds the resolved timeout settings for a fetch operation.
+type fetchTimeoutConfig struct {
+	Overall    time.Duration // hard cap on total download time; 0 = unlimited
+	Inactivity time.Duration // max time between any two Read() calls returning data
+}
+
+func loadFetchTimeoutConfig() fetchTimeoutConfig {
+	return fetchTimeoutConfig{
+		Overall:    parseDurationEnvSeconds(fetchOverallTimeoutEnv, defaultFetchOverallTimeout),
+		Inactivity: parseDurationEnvSeconds(fetchInactivityTimeoutEnv, defaultFetchInactivityTimeout),
+	}
+}
+
+func parseDurationEnvSeconds(envKey string, fallback time.Duration) time.Duration {
+	raw := strings.TrimSpace(os.Getenv(envKey))
+	if raw == "" {
+		return fallback
+	}
+	seconds, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || seconds < 0 {
+		return fallback
+	}
+	if seconds == 0 {
+		return 0
+	}
+	return time.Duration(seconds) * time.Second
+}
+
 var fetchHTTPClient = &http.Client{
-	Timeout: defaultFetchHTTPTimeout,
+	// No overall Client.Timeout — the hard cap is enforced via context, and
+	// body reads are guarded by the inactivity timeout wrapper.  Only the
+	// response-header phase uses a fixed deadline (via Transport).
 	Transport: &http.Transport{
-		MaxIdleConns:      0,
-		MaxConnsPerHost:   1,
-		DisableKeepAlives: true,
-		ForceAttemptHTTP2: false,
-		ReadBufferSize:    256 * 1024,
-		WriteBufferSize:   256 * 1024,
+		MaxIdleConns:          0,
+		MaxConnsPerHost:       1,
+		DisableKeepAlives:     true,
+		ForceAttemptHTTP2:     false,
+		ReadBufferSize:        256 * 1024,
+		WriteBufferSize:       256 * 1024,
+		ResponseHeaderTimeout: defaultFetchConnectTimeout,
 	},
 }
 
@@ -138,11 +177,39 @@ func selectRecoveryFile(payload recoveryMapPayload, selector string) (fetchSelec
 	return fetchSelection{}, newCLIError("FILE_NOT_FOUND_IN_MAP", "file selector does not match any file in the recovery map")
 }
 
-func resolveFetchSource(file recoveryMapFileIndex, pieceBaseURL string) (fetchSource, error) {
+func resolveFetchSource(file recoveryMapFileIndex, pieceBaseURL string, fetchSources []recoveryPackageFetchSource) (fetchSource, error) {
+	fileID := strings.TrimSpace(file.FileID)
+
+	// Priority 1: payload.FetchSources SourceRef as direct URL (Recovery Package v1 contract)
+	if fileID != "" && len(fetchSources) > 0 {
+		for _, fs := range fetchSources {
+			if strings.TrimSpace(fs.FileID) != fileID {
+				continue
+			}
+			if source, ok := resolveDirectFetchSourceRef(fs); ok {
+				return source, nil
+			}
+		}
+	}
+
+	// Priority 2: file.StorageRefs / file.CID direct URLs (legacy compat)
 	if direct, ok := firstDirectFetchLocation(file); ok {
 		return direct, nil
 	}
 
+	// Priority 3: payload.FetchSources PieceRef/CID via piece gateway
+	if fileID != "" && len(fetchSources) > 0 {
+		for _, fs := range fetchSources {
+			if strings.TrimSpace(fs.FileID) != fileID {
+				continue
+			}
+			if source, ok := resolveGatewayFetchSourceRef(fs, pieceBaseURL); ok {
+				return source, nil
+			}
+		}
+	}
+
+	// Priority 4: file.CID via piece gateway fallback
 	if trimmedBase := normalizeRecoveryPieceGatewayURLCLI(pieceBaseURL); trimmedBase != "" {
 		if source, ok, err := buildPieceGatewaySource(file, trimmedBase); err != nil {
 			return fetchSource{}, err
@@ -151,11 +218,86 @@ func resolveFetchSource(file recoveryMapFileIndex, pieceBaseURL string) (fetchSo
 		}
 	}
 
-	if len(file.StorageRefs) == 0 && strings.TrimSpace(file.CID) == "" {
+	if len(file.StorageRefs) == 0 && strings.TrimSpace(file.CID) == "" && len(fetchSources) == 0 {
 		return fetchSource{}, newCLIError("FWSS_REF_NOT_FOUND", "file does not contain any fetchable storage reference")
 	}
 
 	return fetchSource{}, newCLIError("UNSUPPORTED_FETCH_SOURCE", "qrm does not contain a supported direct fetch source for this file")
+}
+
+// resolveDirectFetchSourceRef tries to resolve a FetchSource's SourceRef as a direct
+// fetchable URL (http/https/file). Returns false if SourceRef is not a valid URL.
+func resolveDirectFetchSourceRef(fs recoveryPackageFetchSource) (fetchSource, bool) {
+	sourceRef := normalizeRecoveryPieceGatewayURLCLI(strings.TrimSpace(fs.SourceRef))
+	if sourceRef == "" {
+		return fetchSource{}, false
+	}
+	parsed, err := url.Parse(sourceRef)
+	if err != nil {
+		return fetchSource{}, false
+	}
+	sourceType := strings.TrimSpace(fs.SourceType)
+	switch strings.ToLower(parsed.Scheme) {
+	case "http", "https", "file":
+		return fetchSource{
+			kind:        sourceType,
+			description: sourceType + ":" + sourceRef,
+			location:    sourceRef,
+		}, true
+	}
+	return fetchSource{}, false
+}
+
+// resolveGatewayFetchSourceRef tries to resolve a FetchSource's PieceRef or CID
+// through a piece gateway. Returns false if no gateway source can be built.
+func resolveGatewayFetchSourceRef(fs recoveryPackageFetchSource, pieceBaseURL string) (fetchSource, bool) {
+	// Try PieceRef with piece gateway
+	if fs.PieceRef != nil {
+		if source, ok := buildPieceGatewayFromCID(strings.TrimSpace(*fs.PieceRef), pieceBaseURL); ok {
+			return source, true
+		}
+	}
+
+	// Try CID as direct URL first, then with piece gateway
+	if fs.CID != nil {
+		cid := strings.TrimSpace(*fs.CID)
+		if cid != "" {
+			if parsed, err := url.Parse(cid); err == nil {
+				switch strings.ToLower(parsed.Scheme) {
+				case "http", "https", "file":
+					return fetchSource{
+						kind:        "cid",
+						description: "cid:" + cid,
+						location:    cid,
+					}, true
+				}
+			}
+			if source, ok := buildPieceGatewayFromCID(cid, pieceBaseURL); ok {
+				return source, true
+			}
+		}
+	}
+
+	return fetchSource{}, false
+}
+
+// buildPieceGatewayFromCID builds a piece gateway fetchSource from a CID and base URL.
+func buildPieceGatewayFromCID(cid string, pieceBaseURL string) (fetchSource, bool) {
+	trimmedBase := normalizeRecoveryPieceGatewayURLCLI(pieceBaseURL)
+	if trimmedBase == "" || cid == "" {
+		return fetchSource{}, false
+	}
+	base, err := url.Parse(strings.TrimRight(trimmedBase, "/"))
+	if err != nil || base.Scheme == "" || base.Host == "" {
+		return fetchSource{}, false
+	}
+	base.Path = strings.TrimRight(base.Path, "/") + "/piece/" + url.PathEscape(cid)
+	base.RawPath = ""
+	return fetchSource{
+		kind:        "piece_gateway",
+		description: "piece_gateway:" + cid,
+		location:    base.String(),
+	}, true
 }
 
 func firstDirectFetchLocation(file recoveryMapFileIndex) (fetchSource, bool) {
@@ -306,25 +448,79 @@ func copyFetchSource(ctx context.Context, source fetchSource, dst io.Writer) (in
 		}
 		return written, nil
 	case "http", "https":
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, source.location, nil)
+		tc := loadFetchTimeoutConfig()
+		fetchCtx := ctx
+		var cancel context.CancelFunc
+		if tc.Overall > 0 {
+			fetchCtx, cancel = context.WithTimeout(ctx, tc.Overall)
+		} else {
+			fetchCtx, cancel = context.WithCancel(ctx)
+		}
+		defer cancel()
+
+		req, err := http.NewRequestWithContext(fetchCtx, http.MethodGet, source.location, nil)
 		if err != nil {
 			return 0, newCLIError("FWSS_FETCH_FAILED", "failed to build fetch request")
 		}
 		resp, err := fetchHTTPClient.Do(req)
 		if err != nil {
+			if fetchCtx.Err() != nil {
+				return 0, newCLIError("FWSS_FETCH_FAILED", "fetch source overall timeout exceeded")
+			}
 			return 0, newCLIError("FWSS_FETCH_FAILED", "failed to reach fetch source")
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return 0, newCLIError("FWSS_FETCH_FAILED", fmt.Sprintf("fetch source returned HTTP %d", resp.StatusCode))
 		}
-		written, err := io.Copy(dst, resp.Body)
+		body := io.Reader(resp.Body)
+		if tc.Inactivity > 0 {
+			body = &inactivityReader{r: resp.Body, timeout: tc.Inactivity, timer: time.NewTimer(tc.Inactivity)}
+		}
+		written, err := io.Copy(dst, body)
 		if err != nil {
-			return 0, newCLIError("FWSS_FETCH_FAILED", fmt.Sprintf("failed to stream fetch response body: %s", err.Error()))
+			if fetchCtx.Err() != nil {
+				return written, newCLIError("FWSS_FETCH_FAILED", fmt.Sprintf("fetch source overall timeout exceeded after %d bytes", written))
+			}
+			return written, newCLIError("FWSS_FETCH_FAILED", fmt.Sprintf("failed to stream fetch response body: %s", err.Error()))
 		}
 		return written, nil
 	default:
 		return 0, newCLIError("UNSUPPORTED_FETCH_SOURCE", "fetch source scheme is not supported")
+	}
+}
+
+// inactivityReader wraps an io.Reader and returns an error if no data is
+// received within the configured timeout between successive Read calls.
+type inactivityReader struct {
+	r       io.Reader
+	timeout time.Duration
+	timer   *time.Timer
+}
+
+func (ir *inactivityReader) Read(p []byte) (int, error) {
+	type readResult struct {
+		n   int
+		err error
+	}
+	ch := make(chan readResult, 1)
+	go func() {
+		n, err := ir.r.Read(p)
+		ch <- readResult{n, err}
+	}()
+
+	ir.timer.Reset(ir.timeout)
+	select {
+	case res := <-ch:
+		if !ir.timer.Stop() {
+			select {
+			case <-ir.timer.C:
+			default:
+			}
+		}
+		return res.n, res.err
+	case <-ir.timer.C:
+		return 0, newCLIError("FWSS_FETCH_FAILED", fmt.Sprintf("fetch stalled: no data received for %s", ir.timeout))
 	}
 }
 
@@ -347,6 +543,63 @@ func fetchSourceToFile(ctx context.Context, source fetchSource, outputPath strin
 	if err != nil {
 		cleanup()
 		return 0, err
+	}
+	if err := tempFile.Close(); err != nil {
+		_ = os.Remove(tempPath)
+		return 0, newCLIError("FETCH_OUTPUT_WRITE_FAILED", "failed to finalize fetched encrypted blob")
+	}
+	if err := os.Rename(tempPath, outputPath); err != nil {
+		_ = os.Remove(tempPath)
+		return 0, newCLIError("FETCH_OUTPUT_WRITE_FAILED", "failed to publish fetched encrypted blob")
+	}
+	return written, nil
+}
+
+// progressWriter wraps an io.Writer and periodically calls a callback with
+// the total bytes written so far. Used by restore-all to show download progress.
+type progressWriter struct {
+	dst         io.Writer
+	written     int64
+	interval    time.Duration
+	lastReport  time.Time
+	onProgress  func(bytesWritten int64)
+}
+
+func (pw *progressWriter) Write(p []byte) (int, error) {
+	n, err := pw.dst.Write(p)
+	pw.written += int64(n)
+	if now := time.Now(); now.Sub(pw.lastReport) >= pw.interval {
+		pw.lastReport = now
+		if pw.onProgress != nil {
+			pw.onProgress(pw.written)
+		}
+	}
+	return n, err
+}
+
+func fetchSourceToFileWithProgress(ctx context.Context, source fetchSource, outputPath string, onProgress func(int64)) (int64, error) {
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
+		return 0, newCLIError("FETCH_OUTPUT_WRITE_FAILED", "failed to create fetch output directory")
+	}
+
+	tempFile, err := os.CreateTemp(filepath.Dir(outputPath), filepath.Base(outputPath)+".partial-*")
+	if err != nil {
+		return 0, newCLIError("FETCH_OUTPUT_WRITE_FAILED", "failed to create temporary fetch output")
+	}
+	tempPath := tempFile.Name()
+	cleanup := func() {
+		_ = tempFile.Close()
+		_ = os.Remove(tempPath)
+	}
+
+	var dst io.Writer = tempFile
+	if onProgress != nil {
+		dst = &progressWriter{dst: tempFile, interval: 5 * time.Second, lastReport: time.Now(), onProgress: onProgress}
+	}
+	written, err := copyFetchSource(ctx, source, dst)
+	if err != nil {
+		cleanup()
+		return written, err
 	}
 	if err := tempFile.Close(); err != nil {
 		_ = os.Remove(tempPath)

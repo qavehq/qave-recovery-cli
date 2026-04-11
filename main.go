@@ -439,7 +439,7 @@ func runFetch(args []string, stdout io.Writer, stdin io.Reader, now time.Time) e
 	if err != nil {
 		return err
 	}
-	source, err := resolveFetchSource(selection.file, pieceBaseURL)
+	source, err := resolveFetchSource(selection.file, pieceBaseURL, result.payload.FetchSources)
 	if err != nil {
 		return err
 	}
