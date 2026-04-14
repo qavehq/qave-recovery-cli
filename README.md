@@ -176,6 +176,10 @@ If the browser does not start downloading automatically, look at the `zip_path=.
 - if the Recovery Key is wrong, just type it again in the same `restore-all` session
 - if MetaMask is on a different wallet account, recovery will not continue
 
+## Important note
+
+Depending on your network conditions, recovery may be slow. Please be patient and keep the Terminal window open during the process. Do not close the Terminal or interrupt the recovery unless it has clearly completed or failed.
+
 ## Commands you need for normal recovery
 
 Check the package:
