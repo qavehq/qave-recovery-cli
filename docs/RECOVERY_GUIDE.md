@@ -43,10 +43,16 @@ Use the result to choose the correct download:
 
 ### 0.2 Download the official recovery tool from this repository's GitHub Releases page
 
-Open this repository's GitHub Releases page and download the correct macOS asset:
+Open `https://github.com/qavehq/qave-recovery-cli/releases` and download the correct macOS asset:
 
 - `qave-recovery-cli-darwin-arm64-<version>.zip` for `arm64`
 - `qave-recovery-cli-darwin-amd64-<version>.zip` for `x86_64`
+
+Some macOS users may see the first run blocked after downloading the CLI in a browser. If you see `zsh: killed`, `cannot be opened`, `developer cannot be verified`, or a similar macOS warning, first go to System Settings -> Privacy & Security and allow the app to continue or click `Open Anyway`, then try again. If you trust the release asset from this repository and are comfortable with Terminal, you can also run:
+
+```bash
+xattr -dr com.apple.quarantine ./qave-recovery-cli
+```
 
 ### 0.3 Extract the tool
 

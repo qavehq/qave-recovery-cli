@@ -50,6 +50,14 @@ Expected output:
 5. Make sure MetaMask is installed in your browser, unlocked, and switched to the wallet account associated with your Recovery Package before you run `unlock` or `restore-all`.
 6. Keep your `.qrm` file and Recovery Key ready before you continue.
 
+### macOS first-run note
+
+Some macOS users may see the first run blocked after downloading the CLI in a browser. If you see `zsh: killed`, `cannot be opened`, `developer cannot be verified`, or a similar macOS warning, first go to System Settings -> Privacy & Security and allow the app to continue, then try again. If you trust the release asset from this repository and are comfortable with Terminal, you can also run:
+
+```bash
+xattr -dr com.apple.quarantine ./qave-recovery-cli
+```
+
 ## Step 1. Check that the Recovery Package file is okay
 
 Run:
