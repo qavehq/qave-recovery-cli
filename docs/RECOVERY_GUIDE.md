@@ -184,3 +184,7 @@ How to confirm recovery worked:
 4. Check that your recovered files are inside
 
 If the browser does not start downloading automatically, look at the `zip_path=...` line in the terminal and open that file directly.
+
+## Final note
+
+Depending on your network conditions, recovery may be slow. Please be patient and keep the Terminal window open during the process. Do not close the Terminal or interrupt the recovery unless it has clearly completed or failed.
