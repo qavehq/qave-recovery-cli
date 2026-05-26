@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'none'; worker-src 'none'; manifest-src 'none'"
+    >
+    <title>Qave Recovery Tool v1</title>
+    <link rel="stylesheet" href="./style.css">
+    <script type="module" src="./app.mjs"></script>
+  </head>
+  <body>
+    <main class="recovery-tool">
+      <section class="intro" aria-labelledby="title">
+        <p class="eyebrow">Official static recovery tool</p>
+        <h1 id="title">Qave Recovery Tool v1</h1>
+        <ul class="safety-list" aria-label="Safety notes">
+          <li>Have your .qrm recovery package ready.</li>
+          <li>Use the same wallet that owns the vault.</li>
+          <li>Have your Recovery Key ready.</li>
+          <li>Select multiple files and recover them one by one.</li>
+          <li>Only the current file's encrypted-file link is shown.</li>
+          <li>Each recovered file downloads separately.</li>
+          <li>This tool does not create a combined ZIP.</li>
+          <li>You do not need to save encrypted files ahead of time.</li>
+          <li>During recovery, click the encrypted-file link yourself; this tool does not auto-fetch it.</li>
+          <li>Official Qave recovery only works within the valid access period.</li>
+          <li>This tool does not send your Recovery Key or decrypted file to Qave.</li>
+          <li>After expiration, official Qave tools cannot recover this file.</li>
+          <li>Close this page after recovery to clear remaining browser memory references.</li>
+        </ul>
+      </section>
+
+      <section class="panel" aria-labelledby="package-title">
+        <div class="section-header">
+          <h2 id="package-title">Recovery Package</h2>
+          <button id="reset-button" type="button">Reset</button>
+        </div>
+        <label class="field">
+          <span>.qrm file</span>
+          <input id="qrm-input" type="file" accept=".qrm,application/json">
+        </label>
+        <p id="package-status" class="status" role="status"></p>
+        <dl id="summary" class="summary"></dl>
+      </section>
+
+      <section id="unlock-section" class="panel" aria-labelledby="unlock-title" hidden>
+        <h2 id="unlock-title">Wallet Unlock</h2>
+        <label class="field">
+          <span>Challenge</span>
+          <textarea id="challenge-text" readonly rows="7"></textarea>
+        </label>
+        <div class="actions">
+          <button id="connect-wallet-button" type="button">Connect MetaMask and Sign</button>
+        </div>
+        <p id="unlock-status" class="status" role="status"></p>
+      </section>
+
+      <section id="file-section" class="panel" aria-labelledby="file-title" hidden>
+        <div class="section-header">
+          <div>
+            <h2 id="file-title">Select files to recover</h2>
+            <p class="note">Recover selected files one by one. Only the current file's encrypted-file link is shown. Each recovered file downloads separately. This tool does not create a combined ZIP.</p>
+          </div>
+        </div>
+        <div id="file-list" class="file-list" aria-label="Recoverable files"></div>
+        <div class="actions queue-actions">
+          <button id="start-queue-button" type="button" disabled>Start recovery queue</button>
+          <button id="recover-another-selection-button" type="button" hidden>Recover another selection</button>
+        </div>
+        <p id="file-status" class="status" role="status"></p>
+      </section>
+
+      <section id="queue-section" class="panel" aria-labelledby="queue-title" hidden>
+        <div class="section-header">
+          <div>
+            <h2 id="queue-title">Recover selected files one by one</h2>
+            <p id="queue-progress" class="note"></p>
+          </div>
+        </div>
+        <ol id="queue-list" class="queue-list" aria-label="Recovery queue"></ol>
+        <p id="queue-summary" class="status" role="status"></p>
+
+        <section id="current-file-panel" class="current-file" aria-labelledby="current-file-title" hidden>
+          <p id="current-file-position" class="queue-position"></p>
+          <h3 id="current-file-title">Current file</h3>
+          <p id="current-file-meta" class="note"></p>
+          <ol class="recovery-steps">
+            <li>
+              <h4 id="download-step-title">Step 1: Download encrypted file</h4>
+              <p id="download-step-note">Use the encrypted-file link for the current file, then upload that encrypted file here.</p>
+              <div id="ciphertext-link-section" class="download-source" hidden>
+                <div class="actions">
+                  <a id="ciphertext-download-link" class="button-link" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Download encrypted file</a>
+                  <button id="copy-ciphertext-url-button" type="button" disabled>Copy encrypted file URL</button>
+                </div>
+                <label class="field">
+                  <span>Encrypted file URL</span>
+                  <textarea id="ciphertext-url" readonly rows="3"></textarea>
+                </label>
+                <p id="copy-status" class="status" role="status"></p>
+              </div>
+              <p id="no-ciphertext-url" class="status" data-tone="error" hidden></p>
+            </li>
+            <li>
+              <h4 id="upload-step-title">Step 2: Upload the encrypted file</h4>
+              <p id="upload-step-note">Upload only the encrypted file for the current queue item. It is not reused for other files.</p>
+              <div class="actions">
+                <label class="file-button">
+                  <span>Upload encrypted file</span>
+                  <input id="manual-ciphertext-input" type="file" disabled>
+                </label>
+              </div>
+            </li>
+            <li>
+              <h4 id="decrypt-step-title">Step 3: Decrypt and download original file</h4>
+              <p id="decrypt-step-note">Recovery Key is kept in memory for this page session only.</p>
+              <label class="field">
+                <span>Recovery Key</span>
+                <input id="recovery-key" type="password" autocomplete="off" spellcheck="false" disabled>
+              </label>
+              <div class="actions">
+                <button id="decrypt-button" type="button" disabled>Decrypt and Download</button>
+              </div>
+            </li>
+          </ol>
+          <p id="current-file-status" class="status" role="status"></p>
+          <div class="actions queue-actions">
+            <button id="skip-file-button" type="button">Skip this file</button>
+            <button id="continue-button" type="button" hidden>Continue to next file</button>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

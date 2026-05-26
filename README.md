@@ -1,6 +1,10 @@
 # Qave Recovery Tool
 
+Open-source Qave recovery tools for Qave Recovery Packages.
+
 This guide is for end users who need to recover files from a Qave Recovery Package.
+
+This repository contains Qave recovery tools for an existing Qave Recovery Package, including the standalone CLI and the static browser Recovery Tool.
 
 ## System requirements
 
