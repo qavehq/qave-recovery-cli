@@ -2,8 +2,10 @@
 MAINTAINER NOTE:
 Before creating the GitHub Draft Release, replace every release-artifact placeholder in this file.
 
-- Replace <FINAL_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT> with the actual zip filename.
-- Replace <FINAL_ZIP_SHA256_TO_BE_FILLED_FROM_RELEASE_ARTIFACT> with the actual SHA256 copied from the final .zip.sha256 file.
+- Replace <FINAL_MACOS_APP_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT> with the actual macOS no-terminal zip filename.
+- Replace <FINAL_MACOS_APP_ZIP_SHA256_TO_BE_FILLED_FROM_RELEASE_ARTIFACT> with the actual macOS no-terminal SHA256.
+- Replace <FINAL_STATIC_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT> with the actual static browser zip filename.
+- Replace <FINAL_STATIC_ZIP_SHA256_TO_BE_FILLED_FROM_RELEASE_ARTIFACT> with the actual static browser SHA256.
 - Replace <FINAL_SIDECAR_MANIFEST_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT> with the actual sidecar manifest filename.
 - Before publishing or saving release notes into GitHub, grep this file and confirm there are no FINAL_ZIP, FINAL_SHA256, or FINAL_SIDECAR placeholders left.
 
@@ -34,43 +36,47 @@ Release metadata:
 
 Those files are repository snapshots, not the Recovery Tool release package.
 
-Download this asset instead:
+For ordinary macOS recovery, download this no-terminal asset instead:
 
-`<FINAL_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>`
+`<FINAL_MACOS_APP_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>`
 
 Verify SHA256 before use:
 
-`<FINAL_ZIP_SHA256_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>`
+`<FINAL_MACOS_APP_ZIP_SHA256_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>`
 
-The final zip filename and SHA256 must be copied from the generated `.zip.sha256` file when the GitHub Draft Release assets are attached.
+The static browser zip is also attached for audit, technical validation, and advanced troubleshooting:
+
+`<FINAL_STATIC_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>`
+
+The final zip filenames and SHA256 values must be copied from the generated `.zip.sha256` files when the GitHub Draft Release assets are attached.
 
 ## How To Verify SHA256
 
-Expected SHA256:
+Expected SHA256 for the macOS no-terminal package:
 
-`<FINAL_ZIP_SHA256_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>`
+`<FINAL_MACOS_APP_ZIP_SHA256_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>`
 
 macOS / Linux:
 
 ```sh
-shasum -a 256 <FINAL_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>
+shasum -a 256 <FINAL_MACOS_APP_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>
 ```
 
 Windows PowerShell:
 
 ```powershell
-Get-FileHash <FINAL_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT> -Algorithm SHA256
+Get-FileHash <FINAL_MACOS_APP_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT> -Algorithm SHA256
 ```
 
 The command output must match the expected SHA256 above.
 
 ## What This Is
 
-Qave Recovery Tool v1 is the official static browser tool for recovering files from a signed Qave Recovery Package (`.qrm`).
+Qave Recovery Tool v1 is the official browser recovery tool for recovering files from a signed Qave Recovery Package (`.qrm`). The macOS no-terminal package includes `Qave Recovery Tool.app`, which opens the browser tool without requiring Terminal.
 
 The `.qrm` must be signed by Qave backend before recovery. This browser tool executes recovery locally after you already have a valid `.qrm` Recovery Package.
 
-Recovery execution runs locally in your browser. The tool makes no Qave backend/API/proxy calls during recovery execution.
+Recovery execution runs locally in your browser. The launcher only serves bundled static files from `127.0.0.1` and opens your default browser. The tool makes no Qave backend/API/proxy calls during recovery execution.
 
 ## What You Need Before Recovery
 
@@ -92,7 +98,7 @@ During recovery, the tool shows a verified encrypted-file link from your `.qrm` 
 
 ### During Recovery (Local Execution)
 
-1. Open this Recovery Tool in your browser.
+1. On macOS, open `Qave Recovery Tool.app`; it opens this Recovery Tool in your browser.
 2. Load your `.qrm` file; signature verification happens locally using Qave's public key.
 3. Connect your wallet and sign a challenge message.
 4. Select files to recover.
@@ -106,6 +112,7 @@ This tool does not call Qave backend/API/proxy during recovery execution.
 
 ## What's New In v1.0.0-rc.1
 
+- No-terminal macOS launcher package for ordinary users.
 - Multi-file queue recovery.
 - Select multiple files and recover them one by one.
 - Only the current file's encrypted-file link is shown.
@@ -119,7 +126,10 @@ This tool does not call Qave backend/API/proxy during recovery execution.
 - Verifies `.qrm` package signature using Qave's public key.
 - Checks package and file expiration before recovery.
 - No Qave backend/API/proxy calls during recovery execution.
-- No automatic network requests; CSP keeps `connect-src 'none'`.
+- Launcher binds only to `127.0.0.1` on a random local port and serves only bundled allowlisted static files.
+- Launcher does not read `.qrm`, Recovery Key, ciphertext, plaintext, or arbitrary local files.
+- Launcher has no upload API, no telemetry, no updater, and no Qave backend/API/proxy calls.
+- No automatic network requests from the browser tool; CSP keeps `connect-src 'none'`.
 - User-initiated encrypted-file download.
 - Manual ciphertext upload.
 - Recovery Key kept in JavaScript memory only; not stored in `localStorage`, `sessionStorage`, or `IndexedDB`.
@@ -147,12 +157,22 @@ It is not a long-term archival or disaster recovery solution.
 - Firefox with Ed25519 WebCrypto support.
 - Safari 17 or later.
 - MetaMask or compatible injected wallet provider supporting `personal_sign`.
-- For wallet signing, use a local static server such as `http://127.0.0.1` or an official HTTPS release page.
+- For ordinary macOS recovery, use the no-terminal launcher package. Developer smoke tests may use a local static server such as `http://127.0.0.1`; official HTTPS release pages may also be used when available.
+
+## macOS First-Run Note / Gatekeeper
+
+This release candidate may not yet be codesigned or notarized. macOS Gatekeeper may show a warning such as "cannot be opened" or "developer cannot be verified" the first time `Qave Recovery Tool.app` is opened.
+
+If that happens, ordinary users should not use Terminal as the default path. Open System Settings -> Privacy & Security, find the message that Qave Recovery Tool was blocked, choose Open Anyway, and confirm that you want to open it.
+
+This is a known limitation for this release candidate. A future stable release may add codesigning and notarization. Terminal-based quarantine commands are reserved for support-led or advanced troubleshooting, not the ordinary recovery path.
 
 ## Release Assets
 
-- `<FINAL_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>` - Recovery Tool release package. Download this.
-- `<FINAL_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>.sha256` - SHA256 checksum copied from the generated `.zip.sha256` file.
+- `<FINAL_MACOS_APP_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>` - macOS no-terminal Recovery Tool package. Ordinary macOS users should download this.
+- `<FINAL_MACOS_APP_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>.sha256` - SHA256 checksum for the macOS no-terminal package.
+- `<FINAL_STATIC_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>` - static browser package for audit, technical validation, and advanced troubleshooting.
+- `<FINAL_STATIC_ZIP_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>.sha256` - SHA256 checksum for the static browser package.
 - `<FINAL_SIDECAR_MANIFEST_NAME_TO_BE_FILLED_FROM_RELEASE_ARTIFACT>` - Release manifest with file hashes and security shape.
 - Commit: `<FINAL_PUBLIC_REPO_COMMIT_SHA_TO_BE_FILLED_AFTER_PUBLIC_COMMIT>`
 
@@ -165,7 +185,9 @@ Do not use GitHub's auto-generated "Source code (zip)" or "Source code (tar.gz)"
 - Browser tool processes one current queue file at a time.
 - Browser tool does not create a combined ZIP.
 - Automatic encrypted-file fetch is not supported.
+- macOS Gatekeeper may require Open Anyway because this release candidate may not yet be codesigned or notarized.
 - If no safe encrypted-file link is available in `.qrm`, use the official Qave Recovery CLI or another Qave-approved recovery path.
+- Windows no-console launcher package is not included in B4-1.
 
 ## Important Warnings
 

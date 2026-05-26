@@ -11,12 +11,12 @@ This repository contains Qave recovery tools for an existing Qave Recovery Packa
 Before recovery, make sure your computer has:
 
 - macOS
-- Terminal
+- Terminal only if you choose the advanced CLI recovery path
 - a web browser
 - MetaMask installed in that browser
 - internet access
 - enough free disk space for:
-  - the CLI tool
+  - the Recovery Tool app or CLI tool
   - the Recovery Package file (`.qrm`)
   - temporary downloaded encrypted files during recovery
   - the final restored zip
@@ -29,9 +29,25 @@ Before recovery, make sure you also have:
 
 Recovery can take time, especially for larger packages. During recovery, the tool may download encrypted file data, decrypt it locally on your Mac, and then rebuild a final zip that contains the restored files.
 
-## Install and prepare your Mac
 
-Before you run `verify`, `unlock`, or `restore-all`, prepare the recovery environment:
+## Default no-terminal browser recovery
+
+Most users should use the no-terminal browser Recovery Tool package.
+
+1. Open this repository's GitHub Releases page.
+2. Download the macOS no-terminal asset for your Mac, for example `qave-recovery-tool-macos-arm64-<version>.zip` or `qave-recovery-tool-macos-amd64-<version>.zip`.
+3. Extract the downloaded zip file.
+4. Open `Qave Recovery Tool.app`.
+5. Your default browser opens to the local Recovery Tool page.
+6. Follow the page to load your `.qrm`, connect your wallet, download each encrypted file from the verified link, upload it, enter your Recovery Key, and download each recovered file.
+
+You do not need to open Terminal or type commands for this browser recovery path. The app starts a temporary local server bound only to `127.0.0.1` and serves only the files included in the release package.
+
+The static browser zip is useful for audit, technical validation, or advanced troubleshooting. The CLI assets remain available for advanced restore-all workflows.
+
+## Advanced CLI install and prepare your Mac
+
+If you choose the advanced CLI path, prepare the recovery environment before you run `verify`, `unlock`, or `restore-all`:
 
 1. Check your Mac architecture in Terminal:
 

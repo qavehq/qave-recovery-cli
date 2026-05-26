@@ -45,7 +45,9 @@ Files in the package also have an `expires_at` timestamp. A file cannot remain r
 
 ### 1. Open The Tool
 
-Open the release package in a modern browser. For wallet signing, use a local static server or an official HTTPS release page so MetaMask or a compatible wallet can inject into the page.
+For the default macOS user path, download the no-terminal release package, unzip it, and open `Qave Recovery Tool.app`. The launcher starts a temporary `127.0.0.1` static server and opens the Recovery Tool page in your default browser.
+
+The static browser zip is for audit, technical validation, or advanced troubleshooting. For wallet signing from that package, use the no-terminal launcher, an official HTTPS release page, or a local static server used by a developer or support engineer.
 
 ### 2. Load Your Recovery Package
 
@@ -116,7 +118,15 @@ Manual upload keeps the recovery boundary clear:
 - Safari 17 or later
 - MetaMask or a compatible injected wallet provider that supports `personal_sign`
 
-Opening `index.html` directly can be useful for package inspection, but wallet injection is usually more reliable from `http://127.0.0.1`, `http://localhost`, or an official HTTPS static release page.
+Opening `index.html` directly can be useful for package inspection, but ordinary recovery should use the no-terminal launcher package or an official HTTPS static release page. Wallet injection is usually more reliable from `http://127.0.0.1`, `http://localhost`, or HTTPS than from a direct file URL.
+
+## macOS First-Run Note
+
+This release candidate may not yet be codesigned or notarized. macOS Gatekeeper may show a warning such as "cannot be opened" or "developer cannot be verified" the first time you open `Qave Recovery Tool.app`.
+
+If that happens, do not use Terminal as the default path. Open System Settings -> Privacy & Security, find the message that Qave Recovery Tool was blocked, choose Open Anyway, and confirm that you want to open it.
+
+This is a known limitation for this release candidate. A future stable release may add codesigning and notarization.
 
 ## Security Warnings
 
@@ -134,7 +144,7 @@ Opening `index.html` directly can be useful for package inspection, but wallet i
 
 ### The wallet button does not open MetaMask
 
-Serve the folder from a local static server and open it from `http://127.0.0.1`:
+Ordinary users should use the no-terminal launcher package and open `Qave Recovery Tool.app`. The manual static-server command below is only for developer smoke tests, advanced validation, or support-led troubleshooting:
 
 ```sh
 cd tools/qave-recovery-tool-v1
@@ -179,7 +189,7 @@ This tool is not an indefinite archival or long-term disaster recovery guarantee
 
 ## Release Package Contents
 
-The release zip is expected to contain:
+The static release zip is expected to contain:
 
 - `index.html`
 - `style.css`
@@ -188,7 +198,14 @@ The release zip is expected to contain:
 - `README.md`
 - `RELEASE-MANIFEST.json`
 
-The release zip must not contain tests, fixtures, private seeds, private keys, test `.qrm` files, test ciphertext, `node_modules`, `.git`, or production secrets.
+The macOS no-terminal release zip is expected to contain:
+
+- `Qave Recovery Tool.app/`
+- `Qave Recovery Tool.app/Contents/MacOS/Qave Recovery Tool`
+- `Qave Recovery Tool.app/Contents/Resources/recovery-tool/`
+- `README.txt`
+
+Release zips must not contain tests, fixtures, private seeds, private keys, test `.qrm` files, test ciphertext, `node_modules`, `.git`, or production secrets.
 
 ## Maintainer Notes
 
@@ -199,9 +216,35 @@ From the repository root:
 ```sh
 node tools/qave-recovery-tool-v1/package-release.mjs
 node tools/qave-recovery-tool-v1/check-release.mjs
+node tools/qave-recovery-tool-v1/package-launcher-release.mjs
+node tools/qave-recovery-tool-v1/check-launcher-release.mjs
 ```
 
-By default, release artifacts are written under `dist/recovery-tool/`, which is ignored by git.
+By default, static release artifacts are written under `dist/recovery-tool/`, and macOS launcher artifacts are written under `dist/recovery-tool-launcher/`. Both directories are ignored by git.
+
+### Final Release Package Flow
+
+1. Commit all public repository changes.
+2. Confirm the commit has been pushed to `qavehq/qave-recovery-cli`.
+3. On the final public repository commit, regenerate and verify the static package:
+
+```sh
+node tools/qave-recovery-tool-v1/package-release.mjs
+node tools/qave-recovery-tool-v1/check-release.mjs
+```
+
+4. On the same final public repository commit, regenerate and verify the macOS launcher package:
+
+```sh
+node tools/qave-recovery-tool-v1/package-launcher-release.mjs
+node tools/qave-recovery-tool-v1/check-launcher-release.mjs
+```
+
+5. Confirm the static manifest and launcher manifest both use the same final public repository commit SHA.
+6. Copy the final zip names and SHA256 values from the final `.zip.sha256` files.
+7. Replace every `FINAL_*_TO_BE_FILLED` placeholder in `RELEASE-NOTES-v1.0.0-rc.1.md` or the GitHub Draft Release notes.
+8. Upload the static zip, static `.zip.sha256`, static manifest, macOS launcher zip, macOS launcher `.zip.sha256`, and macOS launcher manifest to the GitHub Draft Release.
+9. Keep the release as Draft + Pre-release. Do not publish until Kane explicitly approves.
 
 ### Development Tests
 
