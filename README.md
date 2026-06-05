@@ -6,7 +6,7 @@ Current status: a Filecoin ProPGF Batch 3 grant application has been submitted, 
 
 ## Why This Matters
 
-Filecoin-backed applications can store encrypted user data in durable decentralized storage, but users often still depend on an application frontend, backend, account system, or product-specific export path to retrieve and decrypt that data. If the normal application path is unavailable, users need a documented and auditable recovery path that is designed to work without relying on the normal Qave frontend/backend API, while still requiring Filecoin/IPFS retrieval paths, gateways, or providers and retained user recovery materials.
+Filecoin-backed applications can store encrypted user data in durable decentralized storage, but users often still depend on an application frontend, backend, account system, or product-specific export path to retrieve and decrypt that data. If the normal application path is unavailable, users need a documented and auditable recovery path that is designed to work without relying on the original application frontend/backend API; in Qave's reference case, this means the normal Qave frontend/backend API.
 
 The toolkit addresses that gap by separating recovery materials, retrieval metadata, verification steps, and local decryption workflows from the normal Qave product experience.
 
@@ -52,7 +52,6 @@ The toolkit does not include:
 - Qave commercial product scope, billing, subscription, or internal operations logic
 - production deployment details, private URLs, internal dashboards, secrets, or API keys
 - a promise that every recovery scenario will succeed
-- new recovery logic beyond what is already present in the repository
 - custody of user private keys, wallet seed phrases, or recovery keys
 
 ## Relationship To Qave
