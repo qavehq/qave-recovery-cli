@@ -1,10 +1,10 @@
 # Project Scope
 
-Qave Recovery Toolkit is intended as a public-good recovery toolkit baseline for encrypted Filecoin-backed data. The grant-funded work is the open-source recovery toolkit, not Qave's commercial product.
+This repository is the public open-source baseline for Qave Recovery Toolkit. It covers application-independent recovery tooling for encrypted Filecoin-backed data, not Qave's commercial product.
 
-## Grant-Funded Open-Source Scope
+## Open-Source Toolkit Scope
 
-The grant-funded scope includes:
+The public toolkit scope includes:
 
 - Recovery Package Manifest v1 documentation
 - recovery package examples using non-sensitive placeholder data
@@ -20,7 +20,7 @@ The scope is application-independent. Qave is the first reference implementation
 
 ## Qave Commercial Application Boundary
 
-Qave's normal commercial application is out of scope for the grant except where it demonstrates the recovery toolkit as a reference implementation.
+Qave's normal commercial application is out of scope except where it demonstrates the recovery toolkit as a reference implementation.
 
 Out-of-scope areas include:
 
@@ -45,9 +45,11 @@ The public toolkit baseline is expected to include:
 - recovery drill documentation
 - Qave reference implementation notes
 
-## What Is Not Grant-Funded
+## What Is Out Of Scope
 
-The grant does not fund:
+This repository does not include Qave's commercial product frontend, billing/subscription system, private backend business logic, internal dashboards, production deployment configuration, or operational tooling.
+
+Out-of-scope areas include:
 
 - Qave's commercial app roadmap
 - production hosting or operations
@@ -57,8 +59,8 @@ The grant does not fund:
 
 ## Qave As First Reference Implementation
 
-Qave is the first application-layer reference context for the recovery package workflow. The grant-funded work will document and harden how an encrypted Filecoin-backed application can export recovery metadata and how a user can attempt recovery with required user-held materials when the encrypted data remains retrievable.
+Qave is the first application-layer reference context for the recovery package workflow. The toolkit documents and hardens how an encrypted Filecoin-backed application can export recovery metadata and how a user can attempt recovery with required user-held materials when the encrypted data remains retrievable.
 
-The recovery workflow is designed to work without relying on the normal Qave frontend/backend API, while still requiring Filecoin/IPFS retrieval paths, gateways, or providers and retained user recovery materials.
+The recovery workflow is designed to work without relying on the original application frontend/backend API, while still requiring Filecoin/IPFS retrieval paths, gateways, or providers and retained user recovery materials. In Qave's reference case, this means avoiding reliance on the normal Qave frontend/backend API.
 
 This reference implementation should not be read as a requirement that other applications copy Qave-specific product architecture.

@@ -27,9 +27,9 @@ The user must retain the required recovery package and recovery materials. The t
 
 If the user loses required recovery materials, recovery may be impossible even if the encrypted data is still stored.
 
-## Independence From The Normal Qave App Path
+## Independence From The Original Application Path
 
-The recovery workflow is designed to work without relying on the normal Qave frontend/backend API. A recovery drill should be able to test the scenario where those normal application services are unavailable.
+The recovery workflow is designed to work without relying on the original application frontend/backend API. In Qave's reference case, this means avoiding reliance on the normal Qave frontend/backend API. A recovery drill should be able to test the scenario where those normal application services are unavailable.
 
 This does not mean recovery is fully offline. Retrieval may still require network access and available Filecoin/IPFS retrieval paths, gateways, or providers.
 

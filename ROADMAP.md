@@ -1,13 +1,13 @@
 # Roadmap
 
-This roadmap reflects the planned four-month public-good baseline for Qave Recovery Toolkit. The scope is application-independent recovery for encrypted Filecoin-backed data, with Qave as the first reference implementation.
+This roadmap reflects the planned four-month public open-source baseline for Qave Recovery Toolkit. The scope is application-independent recovery for encrypted Filecoin-backed data, with Qave as the first reference implementation.
 
 Recovery remains conditional: encrypted data must be retrievable, and the user must retain the required recovery package and recovery materials.
 
 ## Month 1: Recovery Package Manifest v1 And Baseline
 
 - Draft Recovery Package Manifest v1.
-- Clean up repository documentation around the public-good boundary.
+- Clean up repository documentation around the open-source toolkit boundary.
 - Add README, roadmap, license status, and contribution guide.
 - Add security guidance for recovery metadata and decryption workflows.
 - Add a non-sensitive Qave example recovery package.
@@ -34,7 +34,7 @@ Recovery remains conditional: encrypted data must be retrievable, and the user m
 
 ## Month 4: Independent Drill, Demo, And Final Report
 
-- Run an independent recovery drill with Qave normal frontend/backend API unavailable.
+- Run an independent recovery drill with the original application frontend/backend API unavailable; in Qave's reference case, this means the normal Qave frontend/backend API.
 - Publish a public demo.
 - Write user documentation.
 - Write developer documentation.

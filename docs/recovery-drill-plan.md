@@ -1,12 +1,12 @@
 # Independent Recovery Drill Plan
 
-This is a draft plan for an independent recovery drill. The drill tests whether recovery can proceed when the normal Qave frontend/backend API is unavailable.
+This is a draft plan for an independent recovery drill. The drill tests whether recovery can proceed when the original application frontend/backend API is unavailable. In Qave's reference case, this means the normal Qave frontend/backend API is unavailable.
 
 The drill does not prove that every future recovery scenario will succeed. Recovery requires retrievable encrypted data and retained user recovery materials.
 
 ## Scenario
 
-Qave normal frontend/backend API is unavailable. The recovery participant attempts to restore files using the recovery package, required user-held recovery materials, and available Filecoin/IPFS retrieval paths, gateways, or providers.
+The original application frontend/backend API is unavailable. For the Qave reference drill, this means the normal Qave frontend/backend API is unavailable. The recovery participant attempts to restore files using the recovery package, required user-held recovery materials, and available Filecoin/IPFS retrieval paths, gateways, or providers.
 
 ## Inputs Required
 
@@ -21,7 +21,7 @@ For a Qave reference drill, the expected user-held materials are the Qave Recove
 
 ## Expected Flow
 
-1. Confirm the normal Qave frontend/backend API is not used.
+1. Confirm the original application frontend/backend API is not used.
 2. Open the recovery package locally.
 3. Validate package structure and supported version.
 4. Identify encrypted content identifiers and retrieval hints.
@@ -56,7 +56,7 @@ For a Qave reference drill, the expected user-held materials are the Qave Recove
 
 ## Verification Steps
 
-- Confirm no normal Qave frontend/backend API calls are required.
+- Confirm no original application frontend/backend API calls are required.
 - Confirm no private keys, wallet seed phrases, recovery keys, or plaintext file contents appear in logs.
 - Confirm encrypted content was retrieved from independent retrieval paths.
 - Confirm integrity checks pass before restored output is accepted.

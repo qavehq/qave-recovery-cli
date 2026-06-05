@@ -1,14 +1,14 @@
 # Qave Recovery Toolkit / qave-recovery-cli
 
-Qave Recovery Toolkit / qave-recovery-cli is an early open-source baseline for application-independent recovery of encrypted Filecoin-backed data. It defines recovery package concepts, verification documentation, CLI and browser recovery tooling, and example package structures for recovery workflows designed to work without relying on the normal Qave frontend/backend API, while still requiring Filecoin/IPFS retrieval paths, gateways, or providers and retained user recovery materials.
+Qave Recovery Toolkit / qave-recovery-cli is an early open-source baseline for application-independent recovery of encrypted Filecoin-backed data. It defines recovery package concepts, verification documentation, CLI and browser recovery tooling, and example package structures for recovery workflows designed to work without relying on the original application frontend/backend API; in Qave's reference case, this means the normal Qave frontend/backend API.
 
-Current status: a Filecoin ProPGF Batch 3 grant application has been submitted, and this repository is being prepared as an early public-facing baseline. The toolkit is not a guarantee of successful recovery. Recovery requires retrievable encrypted data and the user retaining the required recovery package and recovery materials.
+Current status: this repository is an early public-facing baseline for Qave Recovery Toolkit. It contains recovery package concepts, verification documentation, CLI and browser recovery tooling structure, and example package formats for recovery workflows designed to work without relying on the original application frontend/backend API. The toolkit is not a guarantee of successful recovery. Recovery requires retrievable encrypted data and the user retaining the required recovery package and recovery materials.
 
 ## Why This Matters
 
 Filecoin-backed applications can store encrypted user data in durable decentralized storage, but users often still depend on an application frontend, backend, account system, or product-specific export path to retrieve and decrypt that data. If the normal application path is unavailable, users need a documented and auditable recovery path that is designed to work without relying on the original application frontend/backend API; in Qave's reference case, this means the normal Qave frontend/backend API.
 
-The toolkit addresses that gap by separating recovery materials, retrieval metadata, verification steps, and local decryption workflows from the normal Qave product experience.
+The toolkit addresses that gap by separating recovery materials, retrieval metadata, verification steps, and local decryption workflows from the normal application product experience.
 
 ## What The Toolkit Solves
 
@@ -18,7 +18,7 @@ The project is intended to help users and ecosystem reviewers answer practical r
 - Which content identifiers, provider hints, or deal hints are available?
 - What recovery materials must the user retain?
 - How can a recovery tool verify package integrity before attempting decryption?
-- How can recovery proceed when the normal Qave frontend or backend API is unavailable?
+- How can recovery proceed when the original application frontend/backend API is unavailable?
 - How can another Filecoin-backed application structure a similar recovery package?
 
 The recovery assumption is always explicit: recovery requires the encrypted data to remain retrievable and the user to retain the required recovery materials. If data is no longer retrievable, or if required user-held recovery material is lost, this toolkit cannot guarantee restoration.
@@ -33,9 +33,9 @@ The current public baseline includes:
 - an independent recovery drill plan
 - public roadmap, contribution, and security guidance
 
-## Planned Grant Deliverables
+## Planned Toolkit Work
 
-Planned grant deliverables include:
+Planned toolkit work includes:
 
 - Recovery Package Manifest v1 hardening
 - recovery CLI hardening
@@ -56,9 +56,9 @@ The toolkit does not include:
 
 ## Relationship To Qave
 
-Qave is the first application-layer reference context for this toolkit. The grant-funded work will document and harden how an encrypted Filecoin-backed application can export recovery metadata and how a user can attempt recovery with required user-held materials when the encrypted data remains retrievable.
+Qave is the first application-layer reference context for this toolkit. The toolkit will document and harden how an encrypted Filecoin-backed application can export recovery metadata and how a user can attempt recovery with required user-held materials when the encrypted data remains retrievable.
 
-The grant-funded public-good boundary is the recovery toolkit: package formats, recovery tooling, documentation, examples, verification workflows, and repeatable recovery drills. Qave's commercial application remains out of scope except where it serves as the initial reference implementation.
+The public toolkit boundary is Qave Recovery Toolkit: recovery package formats, recovery tooling, documentation, examples, verification workflows, and repeatable recovery drills. Qave's commercial application remains out of scope except where it serves as the initial reference implementation.
 
 ## Planned Milestones
 
@@ -67,7 +67,7 @@ Milestone 1: Recovery Package Manifest v1 and open-source baseline
 - public README, roadmap, contribution guide, security policy, and scope documentation
 - draft Recovery Package Manifest v1
 - non-sensitive Qave and non-Qave example recovery package structures
-- repository cleanup around the public-good boundary
+- repository cleanup around the public toolkit boundary
 
 Milestone 2: Hardened Recovery CLI and retrieval verification workflow
 
@@ -88,7 +88,7 @@ Milestone 3: Browser-based Recovery Tool and Qave reference implementation
 
 Milestone 4: Independent recovery drill, public demo, docs, final report
 
-- recovery drill with the normal Qave frontend/backend API unavailable
+- recovery drill with the original application frontend/backend API unavailable; in Qave's reference case, this means the normal Qave frontend/backend API
 - public demo
 - user and developer documentation
 - external review or ecosystem participant feedback
@@ -106,7 +106,7 @@ Recovery depends on all of the following:
 - the user retains required recovery materials, such as the matching wallet account and recovery key for Qave packages
 - the recovery package has enough metadata to identify, verify, and decrypt the intended files
 
-The recovery workflow is designed to work without relying on the normal Qave frontend/backend API, while still requiring Filecoin/IPFS retrieval paths, gateways, or providers and retained user recovery materials. See [docs/recovery-assumptions.md](docs/recovery-assumptions.md).
+The recovery workflow is designed to work without relying on the original application frontend/backend API, while still requiring Filecoin/IPFS retrieval paths, gateways, or providers and retained user recovery materials. In Qave's reference case, this means avoiding reliance on the normal Qave frontend/backend API. See [docs/recovery-assumptions.md](docs/recovery-assumptions.md).
 
 ## Repository Structure
 
@@ -114,7 +114,7 @@ The recovery workflow is designed to work without relying on the normal Qave fro
 - [tools/qave-recovery-tool-v1](tools/qave-recovery-tool-v1) - browser recovery tool prototype
 - [docs/RECOVERY_GUIDE.md](docs/RECOVERY_GUIDE.md) - existing Qave recovery CLI user guide
 - [docs/manifest-v1.md](docs/manifest-v1.md) - draft application-independent manifest skeleton
-- [docs/project-scope.md](docs/project-scope.md) - grant-funded public-good scope boundary
+- [docs/project-scope.md](docs/project-scope.md) - public toolkit scope boundary
 - [docs/recovery-drill-plan.md](docs/recovery-drill-plan.md) - independent recovery drill plan
 - [docs/SCOPE.md](docs/SCOPE.md) - current repository implementation scope note
 - [docs/TRADEMARKS.md](docs/TRADEMARKS.md) - trademark boundary note
