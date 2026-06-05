@@ -1,225 +1,141 @@
-# Qave Recovery Tool
+# Qave Recovery Toolkit / qave-recovery-cli
 
-Open-source Qave recovery tools for Qave Recovery Packages.
+Qave Recovery Toolkit / qave-recovery-cli is an early open-source baseline for application-independent recovery of encrypted Filecoin-backed data. It defines recovery package concepts, verification documentation, CLI and browser recovery tooling, and example package structures for recovery workflows designed to work without relying on the normal Qave frontend/backend API, while still requiring Filecoin/IPFS retrieval paths, gateways, or providers and retained user recovery materials.
 
-This guide is for end users who need to recover files from a Qave Recovery Package.
+Current status: a Filecoin ProPGF Batch 3 grant application has been submitted, and this repository is being prepared as an early public-facing baseline. The toolkit is not a guarantee of successful recovery. Recovery requires retrievable encrypted data and the user retaining the required recovery package and recovery materials.
 
-This repository contains Qave recovery tools for an existing Qave Recovery Package, including the standalone CLI and the static browser Recovery Tool.
+## Why This Matters
 
-## System requirements
+Filecoin-backed applications can store encrypted user data in durable decentralized storage, but users often still depend on an application frontend, backend, account system, or product-specific export path to retrieve and decrypt that data. If the normal application path is unavailable, users need a documented and auditable recovery path that is designed to work without relying on the normal Qave frontend/backend API, while still requiring Filecoin/IPFS retrieval paths, gateways, or providers and retained user recovery materials.
 
-Before recovery, make sure your computer has:
+The toolkit addresses that gap by separating recovery materials, retrieval metadata, verification steps, and local decryption workflows from the normal Qave product experience.
 
-- macOS
-- Terminal only if you choose the advanced CLI recovery path
-- a web browser
-- MetaMask installed in that browser
-- internet access
-- enough free disk space for:
-  - the Recovery Tool app or CLI tool
-  - the Recovery Package file (`.qrm`)
-  - temporary downloaded encrypted files during recovery
-  - the final restored zip
+## What The Toolkit Solves
 
-Before recovery, make sure you also have:
+The project is intended to help users and ecosystem reviewers answer practical recovery questions:
 
-- your Recovery Package file ending in `.qrm`
-- the wallet account associated with that package
-- the Recovery Key for that wallet account
+- What encrypted data needs to be retrieved?
+- Which content identifiers, provider hints, or deal hints are available?
+- What recovery materials must the user retain?
+- How can a recovery tool verify package integrity before attempting decryption?
+- How can recovery proceed when the normal Qave frontend or backend API is unavailable?
+- How can another Filecoin-backed application structure a similar recovery package?
 
-Recovery can take time, especially for larger packages. During recovery, the tool may download encrypted file data, decrypt it locally on your Mac, and then rebuild a final zip that contains the restored files.
+The recovery assumption is always explicit: recovery requires the encrypted data to remain retrievable and the user to retain the required recovery materials. If data is no longer retrievable, or if required user-held recovery material is lost, this toolkit cannot guarantee restoration.
 
+## Current Public Baseline
 
-## Default no-terminal browser recovery
+The current public baseline includes:
 
-Most users should use the no-terminal browser Recovery Tool package.
+- recovery package and manifest documentation
+- recovery assumptions and limitation documentation
+- non-sensitive sample recovery package structures
+- an independent recovery drill plan
+- public roadmap, contribution, and security guidance
 
-1. Open this repository's GitHub Releases page.
-2. Download the macOS no-terminal asset for your Mac, for example `qave-recovery-tool-macos-arm64-<version>.zip` or `qave-recovery-tool-macos-amd64-<version>.zip`.
-3. Extract the downloaded zip file.
-4. Open `Qave Recovery Tool.app`.
-5. Your default browser opens to the local Recovery Tool page.
-6. Follow the page to load your `.qrm`, connect your wallet, download each encrypted file from the verified link, upload it, enter your Recovery Key, and download each recovered file.
+## Planned Grant Deliverables
 
-You do not need to open Terminal or type commands for this browser recovery path. The app starts a temporary local server bound only to `127.0.0.1` and serves only the files included in the release package.
+Planned grant deliverables include:
 
-The static browser zip is useful for audit, technical validation, or advanced troubleshooting. The CLI assets remain available for advanced restore-all workflows.
+- Recovery Package Manifest v1 hardening
+- recovery CLI hardening
+- retrieval verification workflows
+- browser-based recovery tool
+- Qave reference implementation documentation
+- public demo and final report
+- non-Qave integration example
 
-## Advanced CLI install and prepare your Mac
+## Not Included
 
-If you choose the advanced CLI path, prepare the recovery environment before you run `verify`, `unlock`, or `restore-all`:
+The toolkit does not include:
 
-1. Check your Mac architecture in Terminal:
+- Qave commercial product scope, billing, subscription, or internal operations logic
+- production deployment details, private URLs, internal dashboards, secrets, or API keys
+- a promise that every recovery scenario will succeed
+- new recovery logic beyond what is already present in the repository
+- custody of user private keys, wallet seed phrases, or recovery keys
+
+## Relationship To Qave
+
+Qave is the first application-layer reference context for this toolkit. The grant-funded work will document and harden how an encrypted Filecoin-backed application can export recovery metadata and how a user can attempt recovery with required user-held materials when the encrypted data remains retrievable.
+
+The grant-funded public-good boundary is the recovery toolkit: package formats, recovery tooling, documentation, examples, verification workflows, and repeatable recovery drills. Qave's commercial application remains out of scope except where it serves as the initial reference implementation.
+
+## Planned Milestones
+
+Milestone 1: Recovery Package Manifest v1 and open-source baseline
+
+- public README, roadmap, contribution guide, security policy, and scope documentation
+- draft Recovery Package Manifest v1
+- non-sensitive Qave and non-Qave example recovery package structures
+- repository cleanup around the public-good boundary
+
+Milestone 2: Hardened Recovery CLI and retrieval verification workflow
+
+- manifest parsing
+- local decryption flow hardening
+- integrity verification
+- recovery logs
+- retrieval verification workflow
+- demo scripts
+
+Milestone 3: Browser-based Recovery Tool and Qave reference implementation
+
+- browser recovery package import
+- recovery material input
+- local verification and decryption
+- restored file download
+- Qave reference implementation documentation
+
+Milestone 4: Independent recovery drill, public demo, docs, final report
+
+- recovery drill with the normal Qave frontend/backend API unavailable
+- public demo
+- user and developer documentation
+- external review or ecosystem participant feedback
+- final report
+- non-Qave integration example
+
+See [ROADMAP.md](ROADMAP.md) for the four-month roadmap.
+
+## Recovery Assumptions And Limitations
+
+Recovery depends on all of the following:
+
+- the encrypted data remains retrievable from Filecoin/IPFS retrieval paths, gateways, or providers
+- the user has the required recovery package or manifest
+- the user retains required recovery materials, such as the matching wallet account and recovery key for Qave packages
+- the recovery package has enough metadata to identify, verify, and decrypt the intended files
+
+The recovery workflow is designed to work without relying on the normal Qave frontend/backend API, while still requiring Filecoin/IPFS retrieval paths, gateways, or providers and retained user recovery materials. See [docs/recovery-assumptions.md](docs/recovery-assumptions.md).
+
+## Repository Structure
+
+- [main.go](main.go) and related root Go files - current Qave recovery CLI source and tests
+- [tools/qave-recovery-tool-v1](tools/qave-recovery-tool-v1) - browser recovery tool prototype
+- [docs/RECOVERY_GUIDE.md](docs/RECOVERY_GUIDE.md) - existing Qave recovery CLI user guide
+- [docs/manifest-v1.md](docs/manifest-v1.md) - draft application-independent manifest skeleton
+- [docs/project-scope.md](docs/project-scope.md) - grant-funded public-good scope boundary
+- [docs/recovery-drill-plan.md](docs/recovery-drill-plan.md) - independent recovery drill plan
+- [docs/SCOPE.md](docs/SCOPE.md) - current repository implementation scope note
+- [docs/TRADEMARKS.md](docs/TRADEMARKS.md) - trademark boundary note
+- [examples/qave](examples/qave) - non-sensitive Qave reference sample package
+- [examples/non-qave](examples/non-qave) - non-Qave sample package structure
+
+## Development
+
+Recovery CLI:
 
 ```bash
-uname -m
+go test ./...
 ```
 
-Expected output:
-
-- `arm64` for Apple Silicon Macs
-- `x86_64` for Intel Macs
-
-2. Open this repository's GitHub Releases page and download the correct macOS asset:
-
-- `qave-recovery-cli-darwin-arm64-<version>.zip` for `arm64`
-- `qave-recovery-cli-darwin-amd64-<version>.zip` for `x86_64`
-
-3. Extract the downloaded zip file.
-4. Open Terminal in the extracted folder so you can run `./qave-recovery-cli ...`.
-5. Make sure MetaMask is installed in your browser, unlocked, and switched to the wallet account associated with your Recovery Package before you run `unlock` or `restore-all`.
-6. Keep your `.qrm` file and Recovery Key ready before you continue.
-
-### macOS first-run note
-
-Some macOS users may see the first run blocked after downloading the CLI in a browser. If you see `zsh: killed`, `cannot be opened`, `developer cannot be verified`, or a similar macOS warning, first go to System Settings -> Privacy & Security and allow the app to continue, then try again. If you trust the release asset from this repository and are comfortable with Terminal, you can also run:
+Browser recovery tool core tests:
 
 ```bash
-xattr -dr com.apple.quarantine ./qave-recovery-cli
+node --test tools/qave-recovery-tool-v1/core.test.mjs
 ```
 
-## Step 1. Check that the Recovery Package file is okay
+## License Status
 
-Run:
-
-```bash
-./qave-recovery-cli verify /path/to/your-file.qrm
-```
-
-What you will normally see:
-
-- lines such as `schema=...`, `vault_owner=...`, and `payload_protection=...`
-- often `file_count=locked`
-
-Do not worry if you see `file_count=locked`.
-That is the normal result for an encrypted Recovery Package.
-It does not mean the file is broken.
-It means the next step is to unlock it with MetaMask.
-
-## Step 2. Unlock the Recovery Package with MetaMask
-
-Run:
-
-```bash
-./qave-recovery-cli unlock /path/to/your-file.qrm --signer metamask
-```
-
-Important:
-
-- do not remove `--signer metamask`
-- this step must use MetaMask
-
-What you do in this step:
-
-1. Wait for the browser signing page to open
-2. If asked, connect MetaMask
-3. Click `Sign Challenge`
-4. Confirm the signature in MetaMask
-
-What you will normally see in the terminal:
-
-- `challenge_verified=true`
-- `payload_unlocked=true`
-
-If the browser does not open by itself, copy the printed `sign_url=...` from the terminal into your browser.
-
-## Step 3. Start full recovery
-
-Run:
-
-```bash
-./qave-recovery-cli restore-all /path/to/your-file.qrm --signer metamask
-```
-
-Important:
-
-- do not remove `--signer metamask`
-- this step asks for MetaMask again
-- this step also asks for your Recovery Key
-
-What you do in this step:
-
-1. Wait for the browser signing page to open again
-2. Click `Sign Challenge` again
-3. Confirm the signature in MetaMask again
-4. Return to the terminal
-5. Enter your Recovery Key when asked
-
-The terminal prompt looks like this:
-
-```text
-Paste recovery key (hyphens/spaces optional):
-```
-
-You can enter the same Recovery Key in any of these formats:
-
-- `ABCDE-FGHJK-MNPQR-ST234`
-- `ABCDE FGHJK MNPQR ST234`
-- `ABCDEFGHJKMNPQRST234`
-
-The tool will recognize the format automatically.
-You do not need to guess which one to use.
-
-If the Recovery Key is wrong:
-
-- the tool will say `Recovery Key incorrect. Please try again.`
-- the tool will ask for the Recovery Key again
-- you do not need to run `unlock` again
-- you do not need to sign with MetaMask again
-
-## Step 4. Get the recovered files
-
-When recovery succeeds, the terminal will show lines like these:
-
-- `restore_all_complete=true`
-- `files_restored=...`
-- `zip_path=...`
-
-What happens next:
-
-- the tool creates one zip file that contains your recovered files
-- your browser will usually open automatically and start downloading that zip
-
-How to confirm recovery worked:
-
-1. Confirm the terminal shows `restore_all_complete=true`
-2. Find the zip file
-3. Open the zip file
-4. Check that your recovered files are inside
-
-If the browser does not start downloading automatically, look at the `zip_path=...` line in the terminal and open that file directly.
-
-## Common situations
-
-- `file_count=locked` during `verify` is normal
-- seeing the `Sign Challenge` page is normal
-- if the Recovery Key is wrong, just type it again in the same `restore-all` session
-- if MetaMask is on a different wallet account, recovery will not continue
-
-## Important note
-
-Depending on your network conditions, recovery may be slow. Please be patient and keep the Terminal window open during the process. Do not close the Terminal or interrupt the recovery unless it has clearly completed or failed.
-
-## Commands you need for normal recovery
-
-Check the package:
-
-```bash
-./qave-recovery-cli verify /path/to/your-file.qrm
-```
-
-Unlock the package:
-
-```bash
-./qave-recovery-cli unlock /path/to/your-file.qrm --signer metamask
-```
-
-Recover everything:
-
-```bash
-./qave-recovery-cli restore-all /path/to/your-file.qrm --signer metamask
-```
-
-## Maintainers
-
-If you are preparing an official release asset for users, use the release flow in [RELEASING.md](RELEASING.md).
+This repository includes a GPLv3 license in [LICENSE](LICENSE). Code license terms and trademark permissions are separate; see [docs/TRADEMARKS.md](docs/TRADEMARKS.md).

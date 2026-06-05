@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "recovery-package-manifest.v1-draft",
+  "applicationId": "qave",
+  "createdAt": "2026-06-05T00:00:00Z",
+  "packageId": "qave-example-package-not-functional",
+  "nonFunctionalSample": true,
+  "sampleDataNotice": "Placeholder-only sample data. This is not a usable Qave recovery package and does not contain real user data, real CIDs, real keys, or production provider details.",
+  "files": [
+    {
+      "fileId": "qave-example-file-001",
+      "fileMetadata": {
+        "name": "family-archive.pdf",
+        "logicalPath": "/vault/family-archive.pdf",
+        "size": 245760,
+        "mimeType": "application/pdf",
+        "createdAt": "2026-06-05T00:00:00Z"
+      },
+      "contentIdentifiers": [
+        {
+          "type": "ipfs-cid",
+          "value": "bafybeiqaveplaceholderencryptedcid000000000000000000000000000",
+          "role": "encrypted-content"
+        }
+      ],
+      "providerHints": [
+        {
+          "type": "filecoin-deal-hint",
+          "provider": "f0placeholder",
+          "dealId": "placeholder-qave-deal-001",
+          "pieceCid": "baga6ea4seaqaveplaceholderpiececid000000000000000000000000"
+        }
+      ],
+      "encryption": {
+        "status": "sample-placeholder",
+        "contentEncryptionAlgorithm": "AES-256-GCM-placeholder",
+        "keyWrapping": "Qave recovery-key wrapped file key placeholder",
+        "nonce": "placeholder-nonce-not-secret",
+        "additionalAuthenticatedData": "placeholder-aad"
+      },
+      "integrity": {
+        "ciphertextSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "plaintextSha256": "1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "recoveryNotes": "Qave reference sample. Real recovery requires a valid Qave recovery package, retrievable encrypted data, the matching wallet account when required, and the matching Recovery Key."
+    }
+  ],
+  "recoveryInstructions": {
+    "requiredMaterials": [
+      "Qave Recovery Package",
+      "matching wallet account when wallet-bound recovery is required",
+      "matching Qave Recovery Key"
+    ],
+    "summary": "Retrieve encrypted content, verify package and file integrity, decrypt locally with the required user-held materials, and write restored files."
+  },
+  "limitations": [
+    "This sample is non-functional and uses placeholder data only.",
+    "Recovery requires retrievable encrypted data and retained recovery materials.",
+    "This sample does not include real Qave production deployment details."
+  ]
+}

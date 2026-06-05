@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "recovery-package-manifest.v1-draft",
+  "applicationId": "example-filecoin-app",
+  "createdAt": "2026-06-05T00:00:00Z",
+  "packageId": "example-filecoin-app-package-not-functional",
+  "nonFunctionalSample": true,
+  "sampleDataNotice": "Placeholder-only sample data for a fictional Filecoin-backed application. This is not a usable recovery package and does not contain real user data, real CIDs, real keys, or production provider details.",
+  "files": [
+    {
+      "fileId": "example-app-file-001",
+      "fileMetadata": {
+        "name": "research-notes.md",
+        "logicalPath": "/exports/research-notes.md",
+        "size": 8192,
+        "mimeType": "text/markdown",
+        "createdAt": "2026-06-05T00:00:00Z"
+      },
+      "contentIdentifiers": [
+        {
+          "type": "ipfs-cid",
+          "value": "bafybeiexampleplaceholderencryptedcid000000000000000000000000",
+          "role": "encrypted-content"
+        },
+        {
+          "type": "filecoin-piece-cid",
+          "value": "baga6ea4seaexampleplaceholderpiececid0000000000000000000000",
+          "role": "piece-hint"
+        }
+      ],
+      "providerHints": [
+        {
+          "type": "retrieval-provider-hint",
+          "provider": "f0example",
+          "dealId": "placeholder-example-deal-001",
+          "pieceCid": "baga6ea4seaexampleplaceholderpiececid0000000000000000000000"
+        }
+      ],
+      "encryption": {
+        "status": "sample-placeholder",
+        "contentEncryptionAlgorithm": "application-defined-placeholder",
+        "keyWrapping": "application-defined-user-held-material-placeholder",
+        "nonce": "placeholder-nonce-not-secret",
+        "additionalAuthenticatedData": "placeholder-aad"
+      },
+      "integrity": {
+        "ciphertextSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "plaintextSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "recoveryNotes": "Fictional non-Qave sample showing that the manifest structure is not limited to Qave."
+    }
+  ],
+  "recoveryInstructions": {
+    "requiredMaterials": [
+      "example-filecoin-app recovery manifest",
+      "application-defined user-held recovery material"
+    ],
+    "summary": "Retrieve encrypted content using available content identifiers or provider hints, verify integrity, decrypt locally with user-held material, and write restored files."
+  },
+  "limitations": [
+    "This sample is non-functional and uses placeholder data only.",
+    "The application-specific encryption and key wrapping details are placeholders.",
+    "Recovery requires retrievable encrypted data and retained recovery materials."
+  ]
+}
